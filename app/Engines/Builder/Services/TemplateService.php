@@ -921,7 +921,8 @@ class TemplateService
      * Write sites/{id}/{slug}/index.html: the home's head/nav/footer (so fonts, palette, design layer, colour
      * treatment and mobile nav are identical) around $bodyHtml. In-page anchors become ../#anchor, blog → ../blog/.
      */
-    public function deployPage(int $websiteId, string $slug, string $bodyHtml, string $title): ?string
+    /** PAGE-PREVIEW-2 (2026-10-07): the document deployPage() writes, composed without writing — the add-page preview shows exactly this. */
+    public function composePage(int $websiteId, string $slug, string $bodyHtml, string $title): ?string
     {
         $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower($slug));
         if ($slug === '' || in_array($slug, ['index', 'blog', 'home'], true)) return null;
@@ -963,6 +964,14 @@ class TemplateService
                 if (! str_contains($doc, 'id="lug-palette-roles"')) $doc = \App\Engines\Builder\Support\PaletteRoles::injectBlock($doc, [], $ctx['manifest'], $ctx['roles']);
             }
         } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] deployPage roles: ' . $e->getMessage()); }
+        return $doc;
+    }
+
+    public function deployPage(int $websiteId, string $slug, string $bodyHtml, string $title): ?string
+    {
+        $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower($slug));
+        $doc = $this->composePage($websiteId, $slug, $bodyHtml, $title);
+        if ($doc === null) return null;
         $dir = storage_path("app/public/sites/{$websiteId}/{$slug}");
         if (!is_dir($dir)) mkdir($dir, 0755, true);
         $path = $dir . '/index.html';
@@ -992,60 +1001,70 @@ class TemplateService
                 continue;
             }
             $depth = dirname($file) === $root ? '' : '../';
-            // NAVEDIT-1: data-field makes the menu label an editable element like the template's own nav links
-            $a = '<a href="' . $depth . e($slug) . '/" class="nav-link lu-page-link" data-page="' . e($slug) . '" data-field="nav_page_' . e($slug) . '">' . e($label) . '</a>';
-            $new = preg_replace_callback('/(<(?:nav|header)\b[^>]*>.*?<\/(?:nav|header)>)/is', function ($m) use ($a, $label, $slug, $depth) {
-                $navHtml = $m[1];
-                // A link with the page's wording already exists (template "Contact" → home #contact): point it at the
-                // dedicated page instead of adding a twin. The customer added the page; the menu must reach it.
-                $repointed = preg_replace_callback('/<a\b([^>]*)>(\s*' . preg_quote($label, '/') . '\s*)<\/a>/iu', function ($am) use ($depth, $slug) {
-                    $attrs = preg_replace('/\shref="[^"]*"/i', ' href="' . $depth . e($slug) . '/"', $am[1], 1) ?? $am[1];
-                    if (!str_contains($attrs, 'data-page=')) $attrs .= ' data-page="' . e($slug) . '"';
-                    return '<a' . $attrs . '>' . $am[2] . '</a>';
-                }, $navHtml, 1, $rc);
-                if ($rc > 0 && is_string($repointed)) return $repointed;
-                // NAV CAPACITY: 6+ links already → added pages live in a "More" menu (site CSS, no native select)
-                $linkCount = preg_match_all('/<a\b[^>]*class="[^"]*\bnav-link\b[^"]*"[^>]*>/i', $navHtml, $lm) + preg_match_all('/<li\b[^>]*>\s*<a\b/i', $navHtml, $ll);
-                if ($linkCount >= 6) {
-                    $item = '<a href="' . $depth . e($slug) . '/" class="lu-page-link" data-page="' . e($slug) . '" data-field="nav_page_' . e($slug) . '">' . e($label) . '</a>';
-                    if (preg_match('/<div class="lu-more">.*?<div class="lu-more-menu">/is', $navHtml, $mm, PREG_OFFSET_CAPTURE)) {
-                        $pos = $mm[0][1] + strlen($mm[0][0]);
-                        return substr($navHtml, 0, $pos) . $item . substr($navHtml, $pos);
-                    }
-                    $more = '<div class="lu-more"><button type="button" class="lu-more-btn" aria-haspopup="true" aria-expanded="false" onclick="var p=this.parentNode,m=this.nextElementSibling;p.classList.toggle(\'open\');this.setAttribute(\'aria-expanded\',p.classList.contains(\'open\'));if(m&&p.classList.contains(\'open\')){m.style.left=\'\';m.style.right=\'\';var r=m.getBoundingClientRect();if(r.right>innerWidth-8){m.style.left=\'auto\';m.style.right=\'0\';r=m.getBoundingClientRect();}if(r.left<8){m.style.right=\'auto\';m.style.left=(8-p.getBoundingClientRect().left)+\'px\';}}">More <span aria-hidden="true">&#9662;</span></button><div class="lu-more-menu">' . $item . '</div></div>';
-                    $isList = (bool) preg_match('/<ul\b[^>]*class="[^"]*nav-links[^"]*"/i', $navHtml);
-                    $moreItem = $isList ? '<li style="list-style:none">' . $more . '</li>' : $more;
-                    if (preg_match('/<a\b[^>]*class="[^"]*\bnav-cta\b[^"]*"[^>]*>/i', $navHtml, $cta, PREG_OFFSET_CAPTURE)) {
-                        $pos = $cta[0][1]; return substr($navHtml, 0, $pos) . $moreItem . substr($navHtml, $pos);
-                    }
-                    if (preg_match('/<\/(?:ul|div)>/i', $navHtml, $end, PREG_OFFSET_CAPTURE, (int) strpos($navHtml, 'nav-links'))) {
-                        $pos = $end[0][1]; return substr($navHtml, 0, $pos) . $moreItem . substr($navHtml, $pos);
-                    }
-                    return $navHtml;
-                }
-                // <ul class="nav-links"> → wrap in <li>; <div class="nav-links"> → bare <a>. Insert before the CTA if present.
-                $isList = (bool) preg_match('/<ul\b[^>]*class="[^"]*nav-links[^"]*"/i', $navHtml);
-                $item = $isList ? '<li style="list-style:none">' . $a . '</li>' : $a;
-                if (preg_match('/<a\b[^>]*class="[^"]*\bnav-cta\b[^"]*"[^>]*>/i', $navHtml, $cta, PREG_OFFSET_CAPTURE)) {
-                    $pos = $cta[0][1];
-                    // if the CTA sits inside the list container, insert before it; else append at container end
-                    return substr($navHtml, 0, $pos) . $item . substr($navHtml, $pos);
-                }
-                if (preg_match('/<\/(?:ul|div)>/i', $navHtml, $end, PREG_OFFSET_CAPTURE, (int) strpos($navHtml, 'nav-links'))) {
-                    $pos = $end[0][1];
-                    return substr($navHtml, 0, $pos) . $item . substr($navHtml, $pos);
-                }
-                return $navHtml;
-            }, $html, 1);
+            $new = $this->linkPageInHtml($html, $slug, $label, $depth);   // PAGE-PREVIEW-2: one transform for the files and the preview
             if (is_string($new) && $new !== $html) {
-                if (str_contains($new, 'class="lu-more"') && !str_contains($new, 'id="lu-more-css"')) {
-                    $css = '<style id="lu-more-css">.lu-more{position:relative;display:inline-block}.lu-more-btn{font:inherit;background:none;border:0;cursor:pointer;color:inherit;padding:0;display:inline-flex;align-items:center;gap:4px}.lu-more-menu{display:none;position:absolute;top:calc(100% + 10px);left:0;min-width:200px;max-width:calc(100vw - 24px);box-sizing:border-box;background:#fff;color:#1a1f26;border:1px solid rgba(15,23,42,.12);border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.14);padding:8px;z-index:9998;flex-direction:column}.lu-more.open .lu-more-menu,.lu-more:hover .lu-more-menu{display:flex}.lu-more-menu a{display:block;padding:10px 12px;border-radius:8px;color:inherit;text-decoration:none;white-space:nowrap}.lu-more-menu a:hover{background:rgba(15,23,42,.06)}@media(max-width:900px){.lu-more{display:block}.lu-more-menu{position:static;display:flex;box-shadow:none;border:0;padding:0 0 0 12px;background:transparent;color:inherit}.lu-more-btn{display:none}}@media (max-width:820px){.lu-more-menu{min-width:0;width:auto;margin-right:14px}.lu-more-menu .lu-page-link{white-space:nowrap}}</style>';
-                    $new = str_ireplace('</head>', $css . '</head>', $new);
-                }
                 file_put_contents($file, $new); $n++;
             }
         }
         return $n;
+    }
+
+    /** PAGE-PREVIEW-2: a link to page $slug in the nav of one document (repoint a same-named link, else add it, or into "More" when the nav is full). */
+    public function linkPageInHtml(string $html, string $slug, string $label, string $depth): string
+    {
+        // NAVEDIT-1: data-field makes the menu label an editable element like the template's own nav links
+        $a = '<a href="' . $depth . e($slug) . '/" class="nav-link lu-page-link" data-page="' . e($slug) . '" data-field="nav_page_' . e($slug) . '">' . e($label) . '</a>';
+        $new = preg_replace_callback('/(<(?:nav|header)\b[^>]*>.*?<\/(?:nav|header)>)/is', function ($m) use ($a, $label, $slug, $depth) {
+            $navHtml = $m[1];
+            // A link with the page's wording already exists (template "Contact" → home #contact): point it at the
+            // dedicated page instead of adding a twin. The customer added the page; the menu must reach it.
+            $repointed = preg_replace_callback('/<a\b([^>]*)>(\s*' . preg_quote($label, '/') . '\s*)<\/a>/iu', function ($am) use ($depth, $slug) {
+                $attrs = preg_replace('/\shref="[^"]*"/i', ' href="' . $depth . e($slug) . '/"', $am[1], 1) ?? $am[1];
+                if (!str_contains($attrs, 'data-page=')) $attrs .= ' data-page="' . e($slug) . '"';
+                return '<a' . $attrs . '>' . $am[2] . '</a>';
+            }, $navHtml, 1, $rc);
+            if ($rc > 0 && is_string($repointed)) return $repointed;
+            // NAV CAPACITY: 6+ links already → added pages live in a "More" menu (site CSS, no native select)
+            $linkCount = preg_match_all('/<a\b[^>]*class="[^"]*\bnav-link\b[^"]*"[^>]*>/i', $navHtml, $lm) + preg_match_all('/<li\b[^>]*>\s*<a\b/i', $navHtml, $ll);
+            if ($linkCount >= 6) {
+                $item = '<a href="' . $depth . e($slug) . '/" class="lu-page-link" data-page="' . e($slug) . '" data-field="nav_page_' . e($slug) . '">' . e($label) . '</a>';
+                if (preg_match('/<div class="lu-more">.*?<div class="lu-more-menu">/is', $navHtml, $mm, PREG_OFFSET_CAPTURE)) {
+                    $pos = $mm[0][1] + strlen($mm[0][0]);
+                    return substr($navHtml, 0, $pos) . $item . substr($navHtml, $pos);
+                }
+                $more = '<div class="lu-more"><button type="button" class="lu-more-btn" aria-haspopup="true" aria-expanded="false" onclick="var p=this.parentNode,m=this.nextElementSibling;p.classList.toggle(\'open\');this.setAttribute(\'aria-expanded\',p.classList.contains(\'open\'));if(m&&p.classList.contains(\'open\')){m.style.left=\'\';m.style.right=\'\';var r=m.getBoundingClientRect();if(r.right>innerWidth-8){m.style.left=\'auto\';m.style.right=\'0\';r=m.getBoundingClientRect();}if(r.left<8){m.style.right=\'auto\';m.style.left=(8-p.getBoundingClientRect().left)+\'px\';}}">More <span aria-hidden="true">&#9662;</span></button><div class="lu-more-menu">' . $item . '</div></div>';
+                $isList = (bool) preg_match('/<ul\b[^>]*class="[^"]*nav-links[^"]*"/i', $navHtml);
+                $moreItem = $isList ? '<li style="list-style:none">' . $more . '</li>' : $more;
+                if (preg_match('/<a\b[^>]*class="[^"]*\bnav-cta\b[^"]*"[^>]*>/i', $navHtml, $cta, PREG_OFFSET_CAPTURE)) {
+                    $pos = $cta[0][1]; return substr($navHtml, 0, $pos) . $moreItem . substr($navHtml, $pos);
+                }
+                if (preg_match('/<\/(?:ul|div)>/i', $navHtml, $end, PREG_OFFSET_CAPTURE, (int) strpos($navHtml, 'nav-links'))) {
+                    $pos = $end[0][1]; return substr($navHtml, 0, $pos) . $moreItem . substr($navHtml, $pos);
+                }
+                return $navHtml;
+            }
+            // <ul class="nav-links"> → wrap in <li>; <div class="nav-links"> → bare <a>. Insert before the CTA if present.
+            $isList = (bool) preg_match('/<ul\b[^>]*class="[^"]*nav-links[^"]*"/i', $navHtml);
+            $item = $isList ? '<li style="list-style:none">' . $a . '</li>' : $a;
+            if (preg_match('/<a\b[^>]*class="[^"]*\bnav-cta\b[^"]*"[^>]*>/i', $navHtml, $cta, PREG_OFFSET_CAPTURE)) {
+                $pos = $cta[0][1];
+                // if the CTA sits inside the list container, insert before it; else append at container end
+                return substr($navHtml, 0, $pos) . $item . substr($navHtml, $pos);
+            }
+            if (preg_match('/<\/(?:ul|div)>/i', $navHtml, $end, PREG_OFFSET_CAPTURE, (int) strpos($navHtml, 'nav-links'))) {
+                $pos = $end[0][1];
+                return substr($navHtml, 0, $pos) . $item . substr($navHtml, $pos);
+            }
+            return $navHtml;
+        }, $html, 1);
+        if (is_string($new) && $new !== $html) {
+            if (str_contains($new, 'class="lu-more"') && !str_contains($new, 'id="lu-more-css"')) {
+                $css = '<style id="lu-more-css">.lu-more{position:relative;display:inline-block}.lu-more-btn{font:inherit;background:none;border:0;cursor:pointer;color:inherit;padding:0;display:inline-flex;align-items:center;gap:4px}.lu-more-menu{display:none;position:absolute;top:calc(100% + 10px);left:0;min-width:200px;max-width:calc(100vw - 24px);box-sizing:border-box;background:#fff;color:#1a1f26;border:1px solid rgba(15,23,42,.12);border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.14);padding:8px;z-index:9998;flex-direction:column}.lu-more.open .lu-more-menu,.lu-more:hover .lu-more-menu{display:flex}.lu-more-menu a{display:block;padding:10px 12px;border-radius:8px;color:inherit;text-decoration:none;white-space:nowrap}.lu-more-menu a:hover{background:rgba(15,23,42,.06)}@media(max-width:900px){.lu-more{display:block}.lu-more-menu{position:static;display:flex;box-shadow:none;border:0;padding:0 0 0 12px;background:transparent;color:inherit}.lu-more-btn{display:none}}@media (max-width:820px){.lu-more-menu{min-width:0;width:auto;margin-right:14px}.lu-more-menu .lu-page-link{white-space:nowrap}}</style>';
+                $new = str_ireplace('</head>', $css . '</head>', $new);
+            }
+            return $new;
+        }
+        return $html;
     }
 
     /** Remember an Arthur-spliced section so deploy() can restore it after any re-render. */
@@ -2067,6 +2086,8 @@ class TemplateService
                 $mark($el);
                 $done = true;
             }
+            foreach ($el->getElementsByTagName('source') as $srcEl) { if ($srcEl->hasAttribute('srcset')) { if ($empty) $srcEl->removeAttribute('srcset'); else $srcEl->setAttribute('srcset', $value); } }   // IMG-SAVE-1: a <picture> source would otherwise keep showing the old photo
+            if (strtolower($el->nodeName) === 'img' && $el->parentNode instanceof \DOMElement && strtolower($el->parentNode->nodeName) === 'picture') { foreach ($el->parentNode->getElementsByTagName('source') as $srcEl) { if ($srcEl->hasAttribute('srcset')) { if ($empty) $srcEl->removeAttribute('srcset'); else $srcEl->setAttribute('srcset', $value); } } }
             foreach ($el->getElementsByTagName('img') as $img) {
                 $img->setAttribute('src', $imgSrc);
                 if (! $empty && \App\Engines\Builder\Support\Editor3::on() && trim((string) $img->getAttribute('alt')) === '') $img->setAttribute('alt', \App\Engines\Builder\Support\Editor3::altFor($altBase, $fieldId));   // EDITOR-3
@@ -2124,7 +2145,12 @@ class TemplateService
             // leave the served file untouched; the durable value still lands in
             // template_variables and the route reports export_patched=false (degraded).
             $wrapsOtherFields = $xpath->query(".//*[@data-field]", $el)->length > 0;
-            if ($isImg) {
+            // IMG-SAVE-1 (2026-10-07): 228 classic designs name their photos gallery_1..6 (no _image suffix). The name test sent
+            // those to the text branch: textContent on an <img> changes nothing, yet the save reported success. A picture slot is
+            // now recognised by the element too (an <img>, or a wrapper holding one) when the value is an image path.
+            $elIsImg = $isImg || ($value === '' && (strtolower($el->nodeName) === 'img'))
+                || (\App\Engines\Builder\Support\LogoFieldSemantics::looksLikeImage($value) && (strtolower($el->nodeName) === 'img' || (! $wrapsOtherFields && $el->getElementsByTagName('img')->length > 0) || stripos((string) $el->getAttribute('style'), 'url(') !== false));
+            if ($elIsImg) { $imgWritten = true;
                 if ($applyImg($el, $value)) { $found = true; }
                 elseif (! $wrapsOtherFields) { $el->textContent = $textValue; $found = true; } // empty text logo
             } elseif (! $wrapsOtherFields) {
@@ -2136,12 +2162,16 @@ class TemplateService
             }
         }
 
+        if ($found && ! empty($imgWritten) && trim($value) !== '') {   // IMG-SAVE-1: success only when the new photo is actually on the page
+            $probe = (string) $dom->saveHTML(); $needle = str_replace(['&', '"'], ['&amp;', '&quot;'], $value);
+            if (! str_contains($probe, $value) && ! str_contains($probe, $needle) && ! str_contains($probe, $cssUrl)) { \Illuminate\Support\Facades\Log::warning('[Builder] IMG-SAVE-1 photo not on page after write', ['website_id' => $websiteId, 'field' => $fieldId]); $found = false; }
+        }
         if ($found) {
             // RISK-0107 — preserve the pre-edit served content so a bad inline edit is recoverable.
             // DEC-0046 (2026-09-14): through the shared snapshot (deduplicated, nested pages, record sidecar) — a raw copy
             // here produced a sidecar-less entry that Undo consumed, leaving the record stale.
             // LISTINGS (2026-09-14): a catalogue sync patches many fields under ONE snapshot of its own ($snapshot=false).
-            if ($snapshot) try { $this->snapshotToHistory($websiteId, 'field_edit'); } catch (\Throwable $e) {
+            if ($snapshot) try { self::$snapDetail = (string) $fieldId; $this->snapshotToHistory($websiteId, 'field_edit'); self::$snapDetail = null; } catch (\Throwable $e) { self::$snapDetail = null;
                 \Illuminate\Support\Facades\Log::warning('[TemplateService] RISK-0107 pre-edit backup failed: ' . $e->getMessage());
             }
 
@@ -2165,6 +2195,10 @@ class TemplateService
      * exact bytes, so a no-op request never consumes undo depth. Nested page exports travel in a sibling
      * directory index-{stamp}.d/ so a restore puts the whole site back, not just the home page.
      */
+    /** VERSIONS-PREVIEW-1: what the next snapshot was taken before (e.g. the field id of a text edit), written into its sidecar. */
+    public static ?string $snapDetail = null;
+
+    /* HIST-SORT-1 (2026-10-07): the stamp suffix is the millisecond (3 hex) + 1 random hex, so two snapshots in one second still sort in the order they were taken; Undo took the wrong one when the suffix was random */
     public function snapshotToHistory(int $websiteId, string $reason = 'arthur'): ?string
     {
         try {
@@ -2182,7 +2216,7 @@ class TemplateService
             if ($latest !== null && @md5_file($latest) === md5($bytes) && $this->nestedUnchangedSince($root, $latest) && $this->recordUnchangedSince($websiteId, $latest)) {
                 return basename($latest);
             }
-            $stamp = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
+            $stamp = date('Ymd-His') . '-' . sprintf('%03x%x', (int) (fmod(microtime(true), 1) * 1000), random_int(0, 15));
             $file  = "{$dir}/index-{$stamp}.html";
             if (@file_put_contents($file, $bytes) === false) { return null; }
             // The record travels with the file: template_variables hold palette/design_extras/colours, and an undo
@@ -2190,7 +2224,7 @@ class TemplateService
             try {
                 $row = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['template_variables', 'settings_json']);
                 $tvRaw = $row->template_variables ?? null;
-                @file_put_contents("{$dir}/index-{$stamp}.json", json_encode(['template_variables' => $tvRaw !== null ? (string) $tvRaw : null, 'settings_json' => isset($row->settings_json) ? (string) $row->settings_json : null, 'saved_at' => date('c'), 'reason' => $reason]));
+                @file_put_contents("{$dir}/index-{$stamp}.json", json_encode(['template_variables' => $tvRaw !== null ? (string) $tvRaw : null, 'settings_json' => isset($row->settings_json) ? (string) $row->settings_json : null, 'saved_at' => date('c'), 'reason' => $reason, 'detail' => self::$snapDetail]));   // VERSIONS-PREVIEW-1: detail
             } catch (\Throwable $e) {}
             foreach ($this->nestedPages($root) as $rel => $abs) {
                 $dst = "{$dir}/index-{$stamp}.d/{$rel}";
@@ -2226,7 +2260,7 @@ class TemplateService
         if ($fp === false) { return ['undone' => false, 'error' => 'lock_failed', 'remaining' => count($entries)]; }
         if (! flock($fp, LOCK_EX)) { fclose($fp); return ['undone' => false, 'error' => 'lock_failed', 'remaining' => count($entries)]; }
         $current = stream_get_contents($fp);
-        $stamp   = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
+        $stamp   = date('Ymd-His') . '-' . sprintf('%03x%x', (int) (fmod(microtime(true), 1) * 1000), random_int(0, 15));
         if (is_string($current) && $current !== '') { @file_put_contents("{$dir}/redo-{$stamp}.html", $current); }
         rewind($fp); ftruncate($fp, 0); fwrite($fp, $bytes); fflush($fp);
         flock($fp, LOCK_UN); fclose($fp);
@@ -2319,7 +2353,7 @@ class TemplateService
                     return basename(end($existing));
                 }
             }
-            $stamp = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
+            $stamp = date('Ymd-His') . '-' . sprintf('%03x%x', (int) (fmod(microtime(true), 1) * 1000), random_int(0, 15));
             $file  = "{$dir}/settings-{$stamp}.json";
             if (@file_put_contents($file, json_encode($payload)) === false) { return null; }
             $all = glob($dir . '/settings-*.json') ?: [];
@@ -2386,10 +2420,17 @@ class TemplateService
         if (! is_dir($dir)) { return []; }
         $out = [];
         foreach (glob($dir . '/index-*.html') ?: [] as $path) {
+            $side = json_decode((string) @file_get_contents(preg_replace('/\.html$/', '.json', $path)), true) ?: [];   // VERSIONS-PREVIEW-1
+            $pages = ['index.html'];
+            $nd = preg_replace('/\.html$/', '.d', $path);
+            if (is_dir($nd)) { foreach (glob($nd . '/*/index.html') ?: [] as $p) $pages[] = ltrim(substr($p, strlen($nd)), '/'); foreach (glob($nd . '/*.html') ?: [] as $p) $pages[] = basename($p); }
             $out[] = [
                 'file'     => basename($path),
                 'size'     => (int) (@filesize($path) ?: 0),
                 'saved_at' => date('c', (int) (@filemtime($path) ?: time())),
+                'reason'   => (string) ($side['reason'] ?? ''),
+                'detail'   => (string) ($side['detail'] ?? ''),
+                'pages'    => array_values(array_unique($pages)),
             ];
         }
         usort($out, fn ($a, $b) => strcmp($b['file'], $a['file'])); // zero-padded stamp => newest first
@@ -2402,6 +2443,35 @@ class TemplateService
      * filename is strictly validated (no path traversal).
      * @return array{restored:bool, restored_from?:string, prior_backup?:string, error?:string}
      */
+    /**
+     * VERSIONS-PREVIEW-1 (Owner 2026-10-07: "is there a preview for this?"): one page of a saved version, or of the
+     * current site when $file is 'current', made safe to show inside the editor: a <base> so its images and styles
+     * resolve, noindex, tracking and chat widgets removed, forms inert, and links reported to the parent so the
+     * preview can move between the version's own pages instead of opening the live site.
+     */
+    public function historyPageHtml(int $websiteId, string $file, string $page = 'index.html'): ?string
+    {
+        $root = storage_path("app/public/sites/{$websiteId}");
+        $page = ltrim(str_replace([chr(92), '..'], ['/', ''], $page), '/');
+        if ($page === '' || ! preg_match('#^([A-Za-z0-9_\-]+/)?[A-Za-z0-9_\-]+\.html$#', $page)) $page = 'index.html';
+        if ($file === 'current') {
+            $path = "{$root}/{$page}";
+        } else {
+            if (! preg_match('/^index-\d{8}-\d{6}-[0-9a-f]{4}\.html$/', $file)) return null;
+            $path = $page === 'index.html' ? "{$root}/.history/{$file}" : "{$root}/.history/" . preg_replace('/\.html$/', '.d', $file) . "/{$page}";
+        }
+        if (! is_file($path)) return null;
+        $html = (string) @file_get_contents($path);
+        if ($html === '') return null;
+        $html = preg_replace('#<script\b[^>]*\bsrc=["\'][^"\']*(chatbot|gtag|googletagmanager|analytics|fbevents|clarity|hotjar|plausible|track)[^"\']*["\'][^>]*>\s*</script>#i', '', $html);
+        $dir  = trim(dirname($page), './');
+        $base = '/storage/sites/' . $websiteId . '/' . ($dir !== '' ? $dir . '/' : '');
+        $head = '<base href="' . $base . '"><meta name="robots" content="noindex,nofollow">'
+              . '<script>(function(){document.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("a[href]"):null;if(!a)return;var h=a.getAttribute("href")||"";if(h.charAt(0)==="#")return;e.preventDefault();try{parent.postMessage({lugVerNav:a.href},"*")}catch(_){}} ,true);document.addEventListener("submit",function(e){e.preventDefault()},true);})();</script>';
+        $html = preg_match('/<head\b[^>]*>/i', $html) ? preg_replace('/<head\b[^>]*>/i', '$0' . $head, $html, 1) : $head . $html;
+        return $html;
+    }
+
     public function restoreFromHistory(int $websiteId, string $file): array
     {
         if (! preg_match('/^index-\d{8}-\d{6}-[0-9a-f]{4}\.html$/', $file)) {
@@ -2418,8 +2488,15 @@ class TemplateService
         if ($fp === false) { return ['restored' => false, 'error' => 'lock_failed']; }
         if (! flock($fp, LOCK_EX)) { fclose($fp); return ['restored' => false, 'error' => 'lock_failed']; }
         $current  = stream_get_contents($fp);
-        $preStamp = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
+        $preStamp = date('Ymd-His') . '-' . sprintf('%03x%x', (int) (fmod(microtime(true), 1) * 1000), random_int(0, 15));
         if (is_string($current) && $current !== '') { @file_put_contents($dir . "/index-{$preStamp}.html", $current); }
+        // VERSIONS-PREVIEW-1: the version a restore replaces carries its record and nested pages too, so it previews, labels
+        // ("Before a restore") and restores whole, like every other entry.
+        if (is_string($current) && $current !== '') { try {
+            $row = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['template_variables', 'settings_json']);
+            @file_put_contents($dir . "/index-{$preStamp}.json", json_encode(['template_variables' => isset($row->template_variables) ? (string) $row->template_variables : null, 'settings_json' => isset($row->settings_json) ? (string) $row->settings_json : null, 'saved_at' => date('c'), 'reason' => 'restore', 'detail' => null]));
+            foreach ($this->nestedPages(storage_path("app/public/sites/{$websiteId}")) as $rel => $abs) { $dst = $dir . "/index-{$preStamp}.d/{$rel}"; @mkdir(dirname($dst), 0775, true); @copy($abs, $dst); }
+        } catch (\Throwable $e) {} }
         rewind($fp);
         ftruncate($fp, 0);
         fwrite($fp, $restoreBytes);
@@ -2504,8 +2581,14 @@ class TemplateService
         if (!preg_match('/^[A-Za-z0-9_-]{1,64}$/', $field)) return 0;
         $root = storage_path("app/public/sites/{$websiteId}"); $n = 0;
         $safe = str_contains($value, '<') ? strip_tags($value, '<br><em><strong><b><i><span>') : e($value);
+        $isPhoto = \App\Engines\Builder\Support\LogoFieldSemantics::looksLikeImage($value);   // IMG-SAVE-1b: a photo on a sub-page is an <img src>, not inner text
         foreach (glob($root . '/*/index.html') ?: [] as $file) {
             $h = (string) file_get_contents($file);
+            if ($isPhoto) {
+                $new = preg_replace_callback('/<img\b[^>]*\bdata-field="' . preg_quote($field, '/') . '"[^>]*>/i', function ($m) use ($value) { $t = preg_replace('/\bsrc="[^"]*"/i', 'src="' . e($value) . '"', $m[0]); return (string) preg_replace('/\bsrcset="[^"]*"/i', 'srcset="' . e($value) . '"', (string) $t); }, $h);
+                if (is_string($new) && $new !== $h) { file_put_contents($file, $new); $n++; }
+                continue;
+            }
             $new = preg_replace_callback('/(<(\w+)\b[^>]*\bdata-field="' . preg_quote($field, '/') . '"[^>]*>)(.*?)(<\/\2>)/s',
                 fn($m) => preg_match('/<(?!\/?(?:br|em|strong|b|i|span)\b)/', $m[3]) ? $m[0] : $m[1] . $safe . $m[4], $h);
             if (is_string($new) && $new !== $h) { file_put_contents($file, $new); $n++; }

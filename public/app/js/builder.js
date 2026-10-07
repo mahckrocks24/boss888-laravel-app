@@ -1206,7 +1206,7 @@ async function _t3ElementOp(d) {
   } catch (e2) { note('The change could not be sent. Please try again.', '#F87171'); if (d.applied) { window._t3Reselect = d.field; _t3ReloadPreview(); } }
 }
 
-function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data.type === "element-op") { _t3ElementOp(e.data); return; }  if (e.data.type === "block-op") { _t3BlockOp(e.data); return; }   /* EDITOR-3 */  if (e.data.type === "chatbot-longpress") { _t3ChatbotLookDialog(); return; }   /* CHATBOT-LOOK-1 */  if (e.data.type === "edit-start") { window._t3EditingText = true; window._t3EditingSince = Date.now(); return; }  if (e.data.type === "edit-end") { window._t3EditingText = false; try { _t3FitPreview(window._t3DeviceKey || "desktop"); } catch (_fe) {} return; }  if (e.data.type === "edit-at-scale") { try { _wsTplSetDevice("mobile"); } catch (_ds) {} var _f = document.getElementById("t3-preview"), _fld = e.data.field; setTimeout(function () { try { _f.contentWindow.postMessage({ type: "begin-edit", field: _fld }, "*"); } catch (_bm) {} }, 350); return; }   /* TEXTEDIT-2 */  if (e.data.type === "block-selected") {    window._t3SelectedBlock = e.data.block_id;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.block_label; lbl.style.color = "#6C5CE7"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { inp.placeholder = "Change " + e.data.block_label + "..."; }    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(e.data.block_id);    return;  }  if (e.data.type === "block-deselected") {    window._t3SelectedBlock = null;    window._t3SelectedElement = null;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Click a section"; lbl.style.color = ""; }    var inp = document.getElementById("t3-arthur-input");    if (inp) inp.placeholder = "Ask Arthur...";    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(null);    return;  }  if (e.data.type === "element-selected") {    if (e.data.block_id) window._t3SelectedBlock = e.data.block_id;    window._t3SelectedElement = e.data.element_key;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.element_label; lbl.style.color = "#F97316"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { var tail = (e.data.element_label || "").split(" \u203A ").pop(); inp.placeholder = "Change " + tail + "..."; }    return;  }  if (e.data.type === "element-deselected") {    window._t3SelectedElement = null;    var lbl2 = document.getElementById("t3-context-label");    if (lbl2 && window._t3SelectedBlock) { var bn = window._t3SelectedBlock; lbl2.textContent = "Editing: " + bn.charAt(0).toUpperCase() + bn.slice(1) + " Section"; lbl2.style.color = "#6C5CE7"; }    var inp2 = document.getElementById("t3-arthur-input");    if (inp2 && window._t3SelectedBlock) inp2.placeholder = "Change " + window._t3SelectedBlock + "...";    return;  }  if (e.data.type === "link-longpress") { _t3LinkSheet(e.data); return; }   // LONGPRESS-1
+function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  /* ONE-PANEL-1 (Owner 2026-10-07: "Image modal would not close automatically after selecting another element"): selecting anything else in the preview closes the picture panel; clicks inside the preview never reach the parent document, so its outside-click rule could not see them */  if (/^(element-selected|element-deselected|block-selected|block-deselected|edit-start|image-clicked)$/.test(e.data.type) && typeof _t3ImgPanelEl !== "undefined" && _t3ImgPanelEl) { var _opF = (_t3ImgPanelInfo && _t3ImgPanelInfo.field) || null; var _nwF = e.data.field || e.data.element_key || null; if (!(_opF && _nwF && _opF === _nwF && e.data.type !== "element-deselected" && e.data.type !== "block-deselected")) { try { _t3HideImagePanel(); } catch (_hp) {} } }  if (e.data.type === "element-op") { _t3ElementOp(e.data); return; }  if (e.data.type === "block-op") { _t3BlockOp(e.data); return; }   /* EDITOR-3 */  if (e.data.type === "chatbot-longpress") { _t3ChatbotLookDialog(); return; }   /* CHATBOT-LOOK-1 */  if (e.data.type === "edit-start") { window._t3EditingText = true; window._t3EditingSince = Date.now(); return; }  if (e.data.type === "edit-end") { window._t3EditingText = false; try { _t3FitPreview(window._t3DeviceKey || "desktop"); } catch (_fe) {} return; }  if (e.data.type === "edit-at-scale") { try { _wsTplSetDevice("mobile"); } catch (_ds) {} var _f = document.getElementById("t3-preview"), _fld = e.data.field; setTimeout(function () { try { _f.contentWindow.postMessage({ type: "begin-edit", field: _fld }, "*"); } catch (_bm) {} }, 350); return; }   /* TEXTEDIT-2 */  if (e.data.type === "block-selected") {    window._t3SelectedBlock = e.data.block_id;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.block_label; lbl.style.color = "#6C5CE7"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { inp.placeholder = "Change " + e.data.block_label + "..."; }    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(e.data.block_id);    return;  }  if (e.data.type === "block-deselected") {    window._t3SelectedBlock = null;    window._t3SelectedElement = null;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Click a section"; lbl.style.color = ""; }    var inp = document.getElementById("t3-arthur-input");    if (inp) inp.placeholder = "Ask Arthur...";    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(null);    return;  }  if (e.data.type === "element-selected") {    if (e.data.block_id) window._t3SelectedBlock = e.data.block_id;    window._t3SelectedElement = e.data.element_key;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.element_label; lbl.style.color = "#F97316"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { var tail = (e.data.element_label || "").split(" \u203A ").pop(); inp.placeholder = "Change " + tail + "..."; }    return;  }  if (e.data.type === "element-deselected") {    window._t3SelectedElement = null;    var lbl2 = document.getElementById("t3-context-label");    if (lbl2 && window._t3SelectedBlock) { var bn = window._t3SelectedBlock; lbl2.textContent = "Editing: " + bn.charAt(0).toUpperCase() + bn.slice(1) + " Section"; lbl2.style.color = "#6C5CE7"; }    var inp2 = document.getElementById("t3-arthur-input");    if (inp2 && window._t3SelectedBlock) inp2.placeholder = "Change " + window._t3SelectedBlock + "...";    return;  }  if (e.data.type === "link-longpress") { _t3LinkSheet(e.data); return; }   // LONGPRESS-1
   if (e.data.type === "editor-readonly-click") {   // PREVIEW-2: a link/button in a read-only preview does nothing but say so
     var now0 = Date.now(); if (!window._t3RoToastAt || now0 - window._t3RoToastAt > 4000) { window._t3RoToastAt = now0; if (typeof showToast === 'function') showToast('This preview is read-only. Ask Arthur to change this page.', 'info'); }
     return;
@@ -2272,24 +2272,152 @@ async function wsOpenSite(siteId){
   }
 }
 
-/* P1R-2b — versions dialog for the full-screen template editor (template sites are exactly the ones with history). */
+/* P1R-2b — versions dialog for the full-screen template editor (template sites are exactly the ones with history).
+   VERSIONS-PREVIEW-1 (Owner 2026-10-07: "is there a preview for this?"): every version opens in a full preview (all its
+   pages, desktop/phone) with Restore inside; rows say what changed in plain words, dates read like people say them,
+   bursts of edits within a minute fold into one row, and the dialog has its own x and sits above the Arthur dock. */
+var _VER_REASON = {
+  field_edit: 'a text edit', arthur_request: 'a change by Arthur', colors: 'a colour change', palette: 'a palette change',
+  fonts: 'a font change', section_hide: 'a section was hidden', section_show: 'a section was shown', element_size: 'a size change',
+  element_fit: 'a photo fit change', element_link: 'a link change', element_effect: 'an effect change', layout_switch: 'a design switch',
+  design_update: 'a design update', design_upgrade: 'a new design', before_design_revert: 'a design revert', video_placed: 'a video was added',
+  contact_facts: 'a contact details change', portraits: 'a photo change', payments_kinds: 'a payments change', catalogue_price: 'a price change', restore: 'a restore'
+};
+function _verWhat(v) {
+  var r = String(v.reason || ''), t = _VER_REASON[r];
+  if (!t && /^catalogue_/.test(r)) t = 'a catalogue change';
+  if (!t && /^listing_/.test(r)) t = 'a listing change';
+  if (!t) t = 'a change';
+  var d = String(v.detail || '').replace(/[_-]+/g, ' ').trim();
+  return 'Before ' + t + (r === 'field_edit' && d ? ' · ' + d : '');
+}
+function _verWhen(iso) {
+  var d = new Date(iso); if (isNaN(d)) return String(iso || '');
+  var now = new Date(), y = new Date(now); y.setDate(now.getDate() - 1);
+  var time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return 'Today ' + time;
+  if (d.toDateString() === y.toDateString()) return 'Yesterday ' + time;
+  var opts = { day: 'numeric', month: 'short' }; if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+  return d.toLocaleDateString('en-GB', opts) + ', ' + time;
+}
+function _verCss() {
+  if (document.getElementById('ver-css')) return;
+  var st = document.createElement('style'); st.id = 'ver-css';
+  st.textContent = '#ws-ver-ov{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '#ws-ver-ov .ver-box{position:relative;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,14px);padding:18px;width:min(560px,100%);max-height:min(82vh,calc(var(--lu-vvh,100vh) - 32px));display:flex;flex-direction:column;box-sizing:border-box;font-family:var(--fb);box-shadow:0 24px 64px rgba(0,0,0,.35)}'
+    + '.ver-x{position:absolute;top:12px;right:12px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:9px;border:1px solid var(--bd);background:var(--s2);color:var(--t2);cursor:pointer;padding:0;flex:0 0 auto}'
+    + '.ver-list{overflow:auto;min-height:0;display:flex;flex-direction:column;gap:6px;margin:0 -4px;padding:0 4px 2px}'
+    + '.ver-row{display:flex;align-items:center;gap:8px;min-height:52px;padding:8px 8px 8px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--s2);cursor:pointer;text-align:left;width:100%;box-sizing:border-box;color:var(--t1);font-family:var(--fb)}'
+    + '.ver-row:hover{border-color:var(--bd2)}.ver-row.now{border-color:var(--p);box-shadow:inset 0 0 0 1px var(--p)}'
+    + '.ver-row .ver-t{flex:1;min-width:0}.ver-row b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ver-row small{display:block;font-size:11.5px;color:var(--t3);margin-top:2px}'
+    + '.ver-pill{flex:0 0 auto;font:700 10.5px var(--fb);letter-spacing:.04em;text-transform:uppercase;color:var(--p);padding:3px 8px;border-radius:999px;background:color-mix(in srgb,var(--p) 14%,transparent)}'
+    + '.ver-btn{flex:0 0 auto;min-height:36px;padding:0 12px;border-radius:9px;border:1px solid var(--bd2);background:var(--s1);color:var(--t1);font:600 12.5px var(--fb);cursor:pointer}'
+    + '.ver-btn.primary{background:var(--p);border-color:var(--p);color:#fff}.ver-btn:disabled{opacity:.55;cursor:default}'
+    + '.ver-short{display:none}.ver-more{align-self:flex-start;border:0;background:none;color:var(--p);font:600 12px var(--fb);cursor:pointer;padding:2px 12px 6px}'
+    + '#ws-ver-pv{position:fixed;inset:0;z-index:2147483001;background:var(--bg,#0b0d12);display:flex;flex-direction:column;font-family:var(--fb)}'
+    + '.ver-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--s1);border-bottom:1px solid var(--bd);flex:0 0 auto;min-width:0}'
+    + '.ver-bar .ver-ttl{flex:1;min-width:0}.ver-bar .ver-ttl b{display:block;font-size:13.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ver-bar .ver-ttl small{display:block;font-size:11.5px;color:var(--t3)}'
+    + '.ver-seg{display:flex;gap:3px;background:var(--s2);border:1px solid var(--bd);border-radius:9px;padding:3px}.ver-seg button{border:0;background:transparent;color:var(--t2);font:600 12px var(--fb);padding:6px 10px;border-radius:7px;cursor:pointer}.ver-seg button[aria-pressed="true"]{background:var(--s1);color:var(--t1);box-shadow:0 1px 4px rgba(0,0,0,.16)}'
+    + '.ver-pages{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;background:var(--s1);border-bottom:1px solid var(--bd);scrollbar-width:none;flex:0 0 auto}.ver-pages::-webkit-scrollbar{display:none}'
+    + '.ver-pages button{flex:0 0 auto;min-height:30px;padding:0 11px;border-radius:999px;border:1px solid var(--bd);background:var(--s2);color:var(--t2);font:600 12px var(--fb);cursor:pointer;white-space:nowrap}.ver-pages button[aria-pressed="true"]{background:var(--p);border-color:var(--p);color:#fff}'
+    + '.ver-stage{flex:1;min-height:0;display:flex;justify-content:center;overflow:auto;background:var(--s2)}'
+    + '.ver-stage iframe{border:0;background:#fff;width:100%;height:100%;display:block}.ver-stage.phone iframe{width:390px;max-width:100%;height:calc(100% - 24px);margin:12px auto;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.35)}'
+    + '.ver-stage .ver-msg{align-self:center;color:var(--t2);font-size:13px;padding:24px;text-align:center}'
+    + '@media (max-width:640px){#ws-ver-ov{align-items:flex-end;padding:0}#ws-ver-ov .ver-box{width:100%;max-height:calc(var(--lu-vvh,100vh) - 24px);border-radius:18px 18px 0 0}.ver-bar .ver-seg{display:none}.ver-bar .ver-btn.primary{padding:0 12px}.ver-long{display:none}.ver-short{display:inline!important}.ver-row .ver-btn{padding:0 10px}}';
+  document.head.appendChild(st);
+}
+var _VER_X = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function _verPageLabel(p) {
+  if (p === 'index.html') return 'Home';
+  var n = p.replace(/\/index\.html$/, '').replace(/\.html$/, '').split('/').pop().replace(/[_-]+/g, ' ');
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+function _verRestore(siteId, v, when, auth, after) {
+  return window.luConfirm('Restore this version?', 'This puts the version from ' + when + ' live straight away. What you have now is kept in Versions, so you can put it back.', { okLabel: 'Restore it', cancelLabel: 'Keep current', danger: true }).then(function (ok) {
+    if (!ok) return false;
+    return fetch(API + 'builder/websites/' + siteId + '/restore', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ file: v.file }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (o) {
+        if (!o.ok || !(o.j && (o.j.restored || o.j.success))) throw new Error((o.j && (o.j.error || o.j.message)) || 'restore failed');
+        if (typeof showToast === 'function') showToast('That version is live again.', 'success');
+        _t3ReloadPreview(); if (after) after(); return true;
+      })
+      .catch(function (e) { if (typeof showToast === 'function') showToast("Couldn't restore that version — " + e.message, 'error'); return false; });
+  });
+}
+function _verPreview(siteId, v, auth, onDone) {
+  _verCss();
+  var old = document.getElementById('ws-ver-pv'); if (old) old.remove();
+  var isNow = v.file === 'current', when = isNow ? 'What your site has now' : _verWhen(v.saved_at);
+  var pages = (v.pages && v.pages.length) ? v.pages : ['index.html'];
+  var pv = document.createElement('div'); pv.id = 'ws-ver-pv'; pv.setAttribute('role', 'dialog'); pv.setAttribute('aria-modal', 'true'); pv.setAttribute('aria-label', 'Version preview');
+  pv.innerHTML = '<div class="ver-bar">'
+    + '<button type="button" class="ver-btn" data-a="back" aria-label="Back to versions">←</button>'
+    + '<div class="ver-ttl"><b>' + bld_esc(isNow ? 'Current version' : _verWhat(v)) + '</b><small>' + bld_esc(when) + '</small></div>'
+    + '<div class="ver-seg" role="group" aria-label="Screen"><button type="button" data-d="desk" aria-pressed="true">Desktop</button><button type="button" data-d="phone" aria-pressed="false">Phone</button></div>'
+    + (isNow ? '' : '<button type="button" class="ver-btn primary" data-a="restore"><span class="ver-long">Restore this version</span><span class="ver-short">Restore</span></button>')
+    + '<button type="button" class="ver-x" style="position:static" data-a="close" aria-label="Close">' + _VER_X + '</button></div>'
+    + (pages.length > 1 ? '<div class="ver-pages" role="tablist" aria-label="Pages">' + pages.map(function (p, i) { return '<button type="button" data-p="' + bld_esc(p) + '" aria-pressed="' + (i === 0) + '">' + bld_esc(_verPageLabel(p)) + '</button>'; }).join('') + '</div>' : '')
+    + '<div class="ver-stage"><div class="ver-msg">Opening this version…</div></div>';
+  document.body.appendChild(pv);
+  var stage = pv.querySelector('.ver-stage');
+  var frame = null;
+  function load(page) {
+    pv.querySelectorAll('.ver-pages button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-p') === page)); });
+    stage.innerHTML = '<div class="ver-msg">Opening ' + bld_esc(_verPageLabel(page)) + '…</div>';
+    fetch(API + 'builder/websites/' + siteId + '/history/' + encodeURIComponent(v.file) + '/page?page=' + encodeURIComponent(page), { headers: auth, cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status === 404 ? 'That page is not in this version.' : 'Couldn’t open this version (HTTP ' + r.status + ').'); return r.text(); })
+      .then(function (html) {
+        stage.innerHTML = '';
+        frame = document.createElement('iframe'); frame.title = 'Version preview'; frame.setAttribute('sandbox', 'allow-scripts');
+        frame.srcdoc = html; stage.appendChild(frame);
+      })
+      .catch(function (e) { stage.innerHTML = '<div class="ver-msg">' + bld_esc(e.message) + '</div>'; });
+  }
+  function onMsg(e) {
+    if (!frame || e.source !== frame.contentWindow || !e.data || !e.data.lugVerNav) return;
+    var u; try { u = new URL(String(e.data.lugVerNav)); } catch (_e) { return; }
+    var path = u.pathname.replace(new RegExp('^/storage/sites/' + siteId + '/'), '').replace(/^\//, '');
+    if (path === '' || /\/$/.test(path)) path += 'index.html';
+    if (!/\.html$/.test(path)) path += '/index.html';
+    if (pages.indexOf(path) !== -1) load(path);
+    else if (typeof showToast === 'function') showToast('That link leads outside this version of your site.', 'info');
+  }
+  window.addEventListener('message', onMsg);
+  function close() { window.removeEventListener('message', onMsg); document.removeEventListener('keydown', esc, true); pv.remove(); }
+  function esc(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } }
+  document.addEventListener('keydown', esc, true);
+  pv.querySelector('[data-a=back]').addEventListener('click', close);
+  pv.querySelector('[data-a=close]').addEventListener('click', function () { close(); if (onDone) onDone('closeAll'); });
+  pv.querySelectorAll('.ver-seg button').forEach(function (b) { b.addEventListener('click', function () {
+    pv.querySelectorAll('.ver-seg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    stage.classList.toggle('phone', b.getAttribute('data-d') === 'phone');
+  }); });
+  pv.querySelectorAll('.ver-pages button').forEach(function (b) { b.addEventListener('click', function () { load(b.getAttribute('data-p')); }); });
+  var rb = pv.querySelector('[data-a=restore]');
+  if (rb) rb.addEventListener('click', function () {
+    rb.disabled = true;
+    _verRestore(siteId, v, when, auth, function () { close(); if (onDone) onDone('restored'); }).then(function (ok) { if (!ok) rb.disabled = false; });
+  });
+  load(pages[0]);
+}
 async function wsShowVersions(siteId) {
+  _verCss();
+  var prev = document.getElementById('ws-ver-ov'); if (prev) prev.remove();
   var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
   var ov = document.createElement('div');
   ov.id = 'ws-ver-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Earlier versions');
-  ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:20px';
-  var box = document.createElement('div');
-  box.style.cssText = 'background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg);padding:18px;width:min(520px,100%);max-height:76vh;overflow:auto;font-family:var(--fb)';
-  box.innerHTML = '<div style="font:700 15px var(--fh);color:var(--t1);margin-bottom:4px">Earlier versions</div>'
-                + '<div style="font-size:12.5px;color:var(--t2);margin-bottom:12px">Every change keeps the version it replaced. Restoring puts that version live; the current one stays in this list.</div>'
-                + '<div id="ws-ver-list"><div class="lu-skel" style="width:70%"></div></div>';
+  var box = document.createElement('div'); box.className = 'ver-box';
+  box.innerHTML = '<button type="button" class="ver-x" aria-label="Close">' + _VER_X + '</button>'
+                + '<div style="font:700 15px var(--fh);color:var(--t1);margin:0 44px 4px 0">Earlier versions</div>'
+                + '<div style="font-size:12.5px;color:var(--t2);margin:0 0 12px;line-height:1.45">Each version is your site just before a change. Tap one to preview it; restoring puts it live and keeps what you have now in this list.</div>'
+                + '<div class="ver-list" id="ws-ver-list"><div class="lu-skel" style="width:70%"></div></div>';
   ov.appendChild(box); document.body.appendChild(ov);
   var close = function () { ov.remove(); document.removeEventListener('keydown', esc); };
-  var esc = function (e) { if (e.key === 'Escape') close(); };
+  var esc = function (e) { if (e.key === 'Escape' && !document.getElementById('ws-ver-pv')) close(); };
   document.addEventListener('keydown', esc);
   ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
-  var closeBtn = document.createElement('button'); closeBtn.type = 'button'; closeBtn.className = 'lu-btn lu-btn--sm'; closeBtn.textContent = 'Close';
-  closeBtn.style.marginTop = '14px'; closeBtn.addEventListener('click', close); box.appendChild(closeBtn);
+  box.querySelector('.ver-x').addEventListener('click', close);
   var list = box.querySelector('#ws-ver-list');
   var items = [];
   try {
@@ -2297,30 +2425,45 @@ async function wsShowVersions(siteId) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     var j = await r.json(); items = (j && (j.history || (j.data && j.data.history))) || [];
   } catch (e) { list.innerHTML = '<div class="lu-empty"><b>Couldn\'t load versions</b>Try again in a moment.</div>'; return; }
-  if (!items.length) { list.innerHTML = '<div class="lu-empty"><b>No earlier versions yet</b>Every change keeps the version it replaced.</div>'; return; }
-  list.innerHTML = ''; list.style.cssText = 'display:flex;flex-direction:column;gap:6px';
-  items.slice(0, 12).forEach(function (v, i) {
-    var when = ''; try { when = new Date(v.saved_at).toLocaleString(); } catch (e) { when = String(v.saved_at || ''); }
-    var row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:44px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--s2)';
-    row.innerHTML = '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">' + (i === 0 ? 'Most recent saved version' : 'Version ' + (i + 1)) + '</div><div style="font-size:11.5px;color:var(--t3)">' + bld_esc(when) + ' \u00B7 ' + Math.round((v.size || 0) / 1024) + ' KB</div></div>';
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'lu-btn lu-btn--sm'; b.textContent = 'Restore';
-    b.addEventListener('click', function () {
-      window.luConfirm('Restore this version?', 'This puts the saved version from ' + when + ' live straight away. Your current version is kept in this list, so you can put it back.', { okLabel: 'Restore it', cancelLabel: 'Keep current', danger: true }).then(function (ok) {
-        if (!ok) return;
-        b.disabled = true; b.textContent = 'Restoring\u2026';
-        fetch(API + 'builder/websites/' + siteId + '/restore', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ file: v.file }) })
-          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-          .then(function (o) {
-            if (!o.ok || !(o.j && (o.j.restored || o.j.success))) throw new Error((o.j && (o.j.error || o.j.message)) || 'restore failed');
-            if (typeof showToast === 'function') showToast('That version is live again.', 'success');
-            _t3ReloadPreview();
-            close(); wsShowVersions(siteId);
-          })
-          .catch(function (e) { b.disabled = false; b.textContent = 'Restore'; if (typeof showToast === 'function') showToast("Couldn't restore that version \u2014 " + e.message, 'error'); });
-      });
-    });
-    row.appendChild(b); list.appendChild(row);
+  list.innerHTML = '';
+  var after = function (what) { close(); if (what === 'restored') wsShowVersions(siteId); };
+  // the current site first: preview only
+  var allPages = ['index.html']; items.forEach(function (v) { (v.pages || []).forEach(function (p) { if (allPages.indexOf(p) === -1) allPages.push(p); }); });
+  var nowRow = document.createElement('button'); nowRow.type = 'button'; nowRow.className = 'ver-row now';
+  nowRow.innerHTML = '<span class="ver-t"><b>Current version</b><small>What your site has now · tap to preview</small></span><span class="ver-pill">Now</span>';
+  nowRow.addEventListener('click', function () { _verPreview(siteId, { file: 'current', pages: allPages }, auth, after); });
+  list.appendChild(nowRow);
+  if (!items.length) { var em = document.createElement('div'); em.className = 'lu-empty'; em.innerHTML = '<b>No earlier versions yet</b>Every change keeps the version it replaced.'; list.appendChild(em); return; }
+  // bursts: entries within a minute of each other fold into one row, shown as the state before the burst
+  var groups = [];
+  items.forEach(function (v) {
+    var t = new Date(v.saved_at).getTime(), g = groups[groups.length - 1];
+    if (g && Math.abs(g.last - t) <= 60000) { g.items.push(v); g.last = t; } else groups.push({ items: [v], last: t });
+  });
+  function rowFor(v, sub) {
+    var when = _verWhen(v.saved_at);
+    var row = document.createElement('div'); row.className = 'ver-row'; row.setAttribute('role', 'button'); row.tabIndex = 0;
+    row.innerHTML = '<span class="ver-t"><b>' + bld_esc(_verWhat(v)) + '</b><small>' + bld_esc(when + (sub ? ' · ' + sub : '')) + '</small></span>';
+    var pvb = document.createElement('button'); pvb.type = 'button'; pvb.className = 'ver-btn'; pvb.textContent = 'Preview';
+    var rb = document.createElement('button'); rb.type = 'button'; rb.className = 'ver-btn'; rb.textContent = 'Restore';
+    var open = function () { _verPreview(siteId, v, auth, after); };
+    row.addEventListener('click', function (e) { if (e.target === rb) return; open(); });
+    row.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target === row) open(); });
+    rb.addEventListener('click', function (e) { e.stopPropagation(); rb.disabled = true; _verRestore(siteId, v, when, auth, function () { after('restored'); }).then(function (ok) { if (!ok) rb.disabled = false; }); });
+    row.appendChild(pvb); row.appendChild(rb);
+    return row;
+  }
+  groups.slice(0, 20).forEach(function (g) {
+    if (g.items.length === 1) { list.appendChild(rowFor(g.items[0])); return; }
+    var oldest = g.items[g.items.length - 1];
+    var head = rowFor(oldest);
+    head.querySelector('b').textContent = 'Before ' + g.items.length + ' quick edits';
+    list.appendChild(head);
+    var more = document.createElement('button'); more.type = 'button'; more.className = 'ver-more'; more.textContent = 'Show each edit';
+    var wrap = document.createElement('div'); wrap.style.cssText = 'display:none;flex-direction:column;gap:6px;padding-left:14px';
+    g.items.slice(0, -1).forEach(function (v) { wrap.appendChild(rowFor(v)); });
+    more.addEventListener('click', function () { var on = wrap.style.display === 'none'; wrap.style.display = on ? 'flex' : 'none'; more.textContent = on ? 'Hide' : 'Show each edit'; });
+    list.appendChild(more); list.appendChild(wrap);
   });
 }
 

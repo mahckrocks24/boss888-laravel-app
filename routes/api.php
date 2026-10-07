@@ -4127,13 +4127,13 @@ document.addEventListener("DOMContentLoaded",function(){
   var _tb = _mk("__lu_el_tb", "position:fixed;z-index:2147483647;display:none;pointer-events:auto;background:#0f172a;border:1px solid #6C5CE7;border-radius:10px;padding:3px;box-shadow:0 6px 24px rgba(0,0,0,.45);max-width:calc(100vw - 16px);flex-wrap:wrap;gap:2px;align-items:center;");
   var _tbField = null, _tbEl = null;
   function _tbBtn(op, label, title, more){ return "<button type=\"button\" data-op=\"" + op + "\" title=\"" + title + "\" aria-label=\"" + title + "\" style=\"min-width:34px;height:36px;border:0;border-radius:7px;background:transparent;color:#fff;font:600 14px system-ui,-apple-system,sans-serif;cursor:pointer;padding:0 4px;touch-action:manipulation;" + (more || "") + "\">" + label + "</button>"; }
-  try { var _tbCss = document.createElement("style"); _tbCss.id = "__lu_tb_css"; _tbCss.textContent = "#__lu_el_tb .lu-fx-group{display:inline-flex;align-items:center;white-space:nowrap}@media (pointer:coarse){#__lu_el_tb button[data-op=drag]{display:none}}"; document.head.appendChild(_tbCss); } catch(_tc){}
+  try { var _tbCss = document.createElement("style"); _tbCss.id = "__lu_tb_css"; _tbCss.textContent = "#__lu_el_tb .lu-fx-group{display:inline-flex;align-items:center;white-space:nowrap}@media (pointer:coarse){#__lu_el_tb button[data-op=drag]{display:none}#__lu_el_tb button[data-op]{min-width:40px;height:40px}#__lu_el_tb button[data-op=size_reset]{min-width:52px}}"; document.head.appendChild(_tbCss); } catch(_tc){}
   _tb.innerHTML = _tbBtn("drag", "⠇", "Drag to move", "cursor:grab;touch-action:none;color:#c4b5fd")
     + _tbBtn("up", "▲", "Move up") + _tbBtn("down", "▼", "Move down")
     + "<span style=\"width:1px;height:22px;background:rgba(255,255,255,.18);margin:0 2px\"></span>"
     + _tbBtn("left", "◧", "Align left") + _tbBtn("center", "▣", "Align centre") + _tbBtn("right", "◨", "Align right")
     + "<span style=\"width:1px;height:22px;background:rgba(255,255,255,.18);margin:0 2px\"></span>"
-    + _tbBtn("smaller", "A−", "Smaller", "font-size:12px") + _tbBtn("bigger", "A+", "Bigger")
+    + _tbBtn("smaller", "A−", "Smaller", "font-size:12px") + _tbBtn("size_reset", "100%", "Text size: tap to go back to the design size", "min-width:48px;font-size:11px;color:#c4b5fd;font-variant-numeric:tabular-nums") + _tbBtn("bigger", "A+", "Bigger")   /* TEXT-SIZE-1 */
     + _tbBtn("link", "🔗", "Link: where this goes when clicked", "font-size:14px")   // LINK-1
     + _tbBtn("fx", "✦", "Effects: opacity, shadow, glow, overlay", "color:#c4b5fd")
     + _tbBtn("img", "🖼", "Picture: fit, focus, width, crop", "color:#c4b5fd")   // IMAGE-FIT-1
@@ -4158,6 +4158,10 @@ document.addEventListener("DOMContentLoaded",function(){
   function _luIsButton(el){ return el.tagName === "BUTTON" || (el.tagName === "A" && /(^|\s)btn/.test(el.className || "")); }
   function _luImgOf(el){ if (!el) return null; if (el.tagName === "IMG") return el; return el.querySelector ? el.querySelector("img") : null; }   // IMAGE-FIT-1
   function _luIsImage(el){ return el.tagName === "IMG" || /_image$|_photo$|_img$|_avatar$/.test(el.getAttribute("data-field") || ""); }
+  /* TEXT-SIZE-1 (Owner 2026-10-07: unable to change the size of text in manual editing): the toolbox shows the size as a % of the
+     design size and sends that exact number; zoom scales the design type (clamp) so phone and desktop keep their proportions */
+  function _luSizePct(el){ var d = el.dataset.luSizePct; if (d) return parseInt(d, 10) || 100; var z = parseFloat(getComputedStyle(el).zoom || "1") || 1; return Math.round(z * 100 / 10) * 10 || 100; }
+  function _luSizeLabel(p){ var b = _tb.querySelector("[data-op=size_reset]"); if (b) { b.textContent = p + "%"; b.style.color = p === 100 ? "rgba(255,255,255,.55)" : "#c4b5fd"; } }
   function _luApplyLocal(op, el){
     var p = el.parentElement; if (!p) return false;
     var kids = Array.prototype.filter.call(p.children, function(c){ return !/^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT)$/.test(c.tagName); });
@@ -4185,12 +4189,13 @@ document.addEventListener("DOMContentLoaded",function(){
         var pct = Math.max(30, Math.min(100, cur + (up ? 15 : -15)));
         el.style.setProperty("width", pct + "%", "important"); el.style.setProperty("max-width", "100%", "important"); el.style.setProperty("height", "auto", "important");
       } else {
-        var z = parseFloat(el.style.zoom || getComputedStyle(el).zoom || "1") || 1;
-        var f = Math.max(0.6, Math.min(1.8, Math.round(z * (up ? 1.15 : 1 / 1.15) * 1000) / 1000));
-        if (f === z) return false;
-        el.style.zoom = f;
+        var cp = _luSizePct(el);
+        var np = Math.max(60, Math.min(180, cp + (up ? 10 : -10)));
+        if (np === cp) return false;
+        el.style.zoom = np / 100; el.dataset.luSizePct = String(np); _luSizeLabel(np);
       }
     }
+    else if (op === "size_reset") { if (_luIsImage(el)) return false; if (_luSizePct(el) === 100) return false; el.style.zoom = 1; el.dataset.luSizePct = "100"; _luSizeLabel(100); }
     else return false;
     try { _posBox(_sel, el); _posTip(el.getAttribute("data-field") || "", el); _tbPlace(); } catch(_pp){}
     return true;
@@ -4234,6 +4239,7 @@ document.addEventListener("DOMContentLoaded",function(){
     try { var _ib = _tb.querySelector("button[data-op=\"img\"]"); if (_ib) _ib.style.display = isImg ? "" : "none"; var _ir = document.getElementById("__lu_el_img"); if (_ir) { _ir.style.display = "none"; var _im = _luImgOf(el); var _w = document.getElementById("__lu_el_w"), _wv = document.getElementById("__lu_el_wv"); if (_im && _w) { var _cur = parseInt((_im.style.width || "").replace("%", ""), 10); if (!(_cur >= 30 && _cur <= 100)) _cur = 100; _w.value = _cur; if (_wv) _wv.textContent = _cur + "%"; } } } catch(_ig) {}   // IMAGE-FIT-1
     var sm = _tb.querySelector("[data-op=smaller]"), bg = _tb.querySelector("[data-op=bigger]");
     if (sm) sm.textContent = isImg ? "−" : "A−"; if (bg) bg.textContent = isImg ? "+" : "A+";
+    try { var _sr = _tb.querySelector("[data-op=size_reset]"); if (_sr) { _sr.style.display = isImg ? "none" : ""; if (!isImg) _luSizeLabel(_luSizePct(el)); } } catch(_sz) {}
     _tb.style.display = "flex"; _tbPlace();
   }
   function _luHideToolbox(){ _tb.style.display = "none"; _tbEl = null; _tbField = null; }
@@ -4269,6 +4275,7 @@ document.addEventListener("DOMContentLoaded",function(){
     try { msg.applied = _luApplyLocal(op, _tbEl); } catch(_la) { msg.applied = false; }
     if (op === "up" || op === "down") { msg.op = "move"; msg.dir = op; }
     else if (op === "left" || op === "center" || op === "right") { msg.op = "align"; msg.align = op; }
+    else if (!_luIsImage(_tbEl) && (op === "bigger" || op === "smaller" || op === "size_reset")) { msg.op = "size"; msg.dir = op === "smaller" ? "smaller" : "bigger"; msg.pct = _luSizePct(_tbEl); if (!msg.applied) return; }   // TEXT-SIZE-1: nothing to save at a limit
     else { msg.op = "size"; msg.dir = op; }
     window.parent.postMessage(msg, "*");
   });
@@ -4826,6 +4833,16 @@ Route::get('/builder/websites/{id}/history', function (\Illuminate\Http\Request 
     if ($__ow !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'Website not found'], 404);
     return response()->json(['history' => (new \App\Engines\Builder\Services\TemplateService())->listHistory((int) $id)]);
 })->middleware('auth.jwt');
+
+// VERSIONS-PREVIEW-1 (Owner 2026-10-07): one page of a saved version (or 'current'), for the Versions preview. Workspace-scoped,
+// bearer-authenticated, noindex, never cached; the editor renders it in a sandboxed frame.
+Route::get('/builder/websites/{id}/history/{file}/page', function (\Illuminate\Http\Request $r, $id, $file) {
+    $__ow = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('workspace_id');
+    if ($__ow !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'Website not found'], 404);
+    $html = (new \App\Engines\Builder\Services\TemplateService())->historyPageHtml((int) $id, (string) $file, (string) $r->query('page', 'index.html'));
+    if ($html === null) return response()->json(['error' => 'That page is not in this version'], 404);
+    return response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8', 'Cache-Control' => 'no-store', 'X-Robots-Tag' => 'noindex, nofollow']);
+})->where('file', '[A-Za-z0-9_.\-]+')->middleware('auth.jwt');
 
 Route::post('/builder/websites/{id}/restore', function (\Illuminate\Http\Request $r, $id) {
     $__ow = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('workspace_id');
