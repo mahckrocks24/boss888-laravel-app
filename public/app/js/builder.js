@@ -4735,9 +4735,10 @@ function _t3ExitChoice(n) {
     box.innerHTML = '<div style="font:700 15px var(--fh);color:var(--t1);margin-bottom:6px">' + (n > 0 ? 'Save your edits before you leave?' : 'Leave the editor?') + '</div>'
       + '<div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:16px">' + (n > 0 ? 'You have ' + n + ' unsaved text edit' + (n === 1 ? '' : 's') + ' in the preview. Save and exit ' + (window._t3SiteStatus === 'published' ? ((window._t3Flags && window._t3Flags.draftedits && window._t3DraftChanges && window._t3DraftChanges.has_live) ? 'keeps ' + (n === 1 ? 'it' : 'them') + ' on your draft; Publish changes puts the draft live.' : 'puts ' + (n === 1 ? 'it' : 'them') + ' on your live site.') : 'keeps ' + (n === 1 ? 'it' : 'them') + ' as a draft on this website.') : 'Everything you changed is already saved on this website — Arthur’s changes, colours, layout and your edits. Undo and Versions can put any of it back next time.') + '</div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'
-      + '<button type="button" class="lu-btn lu-btn--sm" data-c="stay">Keep editing</button>'
-      + (n > 0 ? '<button type="button" class="lu-btn lu-btn--sm" data-c="discard" style="color:#F87171">Leave without saving</button>' : '')
-      + '<button type="button" class="lu-btn lu-btn--sm lu-btn--primary" data-c="save" style="background:var(--p);color:#fff;border-color:var(--p)">Save and exit</button>'
+      /* EXIT-2 (Owner 2026-10-07: 'Add an option on editor when exiting "Discard Changes & Exit". No need for Keep Editing'): two choices;
+         Escape or a tap outside still keeps the editor open. */
+      + (n > 0 ? '<button type="button" class="lu-btn lu-btn--sm" data-c="discard" style="color:#F87171">Discard Changes &amp; Exit</button>' : '')
+      + '<button type="button" class="lu-btn lu-btn--sm lu-btn--primary" data-c="save" style="background:var(--p);color:#fff;border-color:var(--p)">' + (n > 0 ? 'Save and exit' : 'Exit') + '</button>'
       + '</div>';
     ov.appendChild(box); document.body.appendChild(ov);
     function done(v) { try { ov.remove(); } catch (_e) {} document.removeEventListener('keydown', onKey, true); resolve(v); }
@@ -4794,7 +4795,15 @@ function _t3LayoutEndPreview() {
     + '#t3-lay .dp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}'
     + '#t3-lay .dp-card{border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--s2);display:flex;flex-direction:column}'
     + '#t3-lay .dp-card.cur{border-color:var(--p)}'
-    + '#t3-lay .dp-card img,#t3-lay .dp-card .ph{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top;background:#0B0D13}'
+    + '#t3-lay .dp-card .shot{position:relative;display:block;width:100%;aspect-ratio:16/10;overflow:hidden;background:var(--s1)}'
+    + '#t3-lay .dp-card .shot img{position:relative;z-index:1;display:block;width:100%;height:100%;object-fit:cover;object-position:left top}'
+    + '#t3-lay .dp-card .shot img.m{display:none}'
+    + '#t3-lay .dp-card .ph{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;padding:12px;'
+    +   'background:radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--p) 42%,transparent),transparent 60%),linear-gradient(160deg,var(--s2),var(--s1));color:var(--t1)}'
+    + '#t3-lay .dp-card .ph b{font:700 15px/1.2 var(--fh)}#t3-lay .dp-card .ph span{font-size:11px;color:var(--t3);letter-spacing:.06em;text-transform:uppercase}'
+    + '#t3-lay .dp-head{position:sticky;top:0;z-index:2;background:var(--s1);margin:-14px -14px 0;padding:14px 14px 10px;border-bottom:1px solid var(--bd)}'
+    + '#t3-lay .dp-x{background:none;border:1px solid var(--bd);color:var(--t2);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:18px;line-height:1;display:grid;place-items:center;padding:0;flex:0 0 auto}'
+    + '#t3-lay .dp-intro-s{display:none}#t3-lay .lbl-s{display:none}'
     + '#t3-lay .dp-card .b{padding:10px 11px 11px;display:flex;flex-direction:column;gap:8px;flex:1}'
     + '#t3-lay .dp-card .n{font-size:13.5px;font-weight:650;color:var(--t1)}'
     + '#t3-lay .dp-card .m{font-size:11.5px;color:var(--t3);line-height:1.4}'
@@ -4811,7 +4820,20 @@ function _t3LayoutEndPreview() {
     + '.dp-ql .frame{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5);transform-origin:top center}'
     + '.dp-ql .frame iframe{border:0;display:block;width:100%;height:100%}'
     + '.dp-ql .palrow{padding:8px 16px;background:var(--s1);border-bottom:1px solid var(--bd)}'
-    + '@media (max-width:760px){#t3-lay .dp-grid{grid-template-columns:1fr}.dp-ql .bar{padding:10px 12px}.dp-ql .stage{padding:10px}}';
+    + '@media (max-width:760px){'
+    // phones: a fixed bottom sheet above the Arthur dock (which hides while it is open), sticky chips, two compact cards a row, phone-view shots
+    +   '#template-editor-view #t3-lay.dp{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;width:100%!important;max-height:88vh!important;z-index:10050!important;border-radius:16px 16px 0 0!important;padding:14px 12px 18px!important}'
+    +   'html.dp-open #template-editor-view .pe-side{display:none!important}'
+    +   '#t3-lay .dp-head{margin:-14px -12px 0;padding:12px 12px 8px}'
+    +   '#t3-lay .dp-intro-l{display:none}#t3-lay .dp-intro-s{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    +   '#t3-lay .dp-lbl{margin:8px 0 4px}#t3-lay .dp-chip{padding:5px 10px;font-size:12px}'
+    +   '#t3-lay .dp-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+    +   '#t3-lay .dp-card .shot{aspect-ratio:390/440}'
+    +   '#t3-lay .dp-card .shot img.d{display:block}#t3-lay .dp-card.hasm .shot img.d{display:none}#t3-lay .dp-card.hasm .shot img.m{display:block}'
+    +   '#t3-lay .dp-card .b{padding:8px 8px 9px;gap:6px}#t3-lay .dp-card .n{font-size:12.5px;line-height:1.3}#t3-lay .dp-card .m{font-size:10.5px}'
+    +   '#t3-lay .dp-card .a{flex-wrap:nowrap;gap:5px}#t3-lay .dp-card .a .lu-btn{flex:1 1 0;min-width:0;padding:6px 4px;font-size:12px;white-space:nowrap}#t3-lay .dp-card .m{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#t3-lay .dp-card .n{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}#t3-lay .lbl-l{display:none}#t3-lay .lbl-s{display:inline}'
+    +   '#t3-lay .dp-tag{font-size:9px;padding:1px 6px}'
+    +   '.dp-ql .bar{padding:10px 12px}.dp-ql .stage{padding:10px}}';
   document.head.appendChild(st);
 })();
 
@@ -4873,11 +4895,15 @@ window.wsOpenLayouts = async function (siteId) {
   var panel = document.createElement('div');
   panel.id = 't3-lay'; panel.className = 'dp'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Designs');
   panel.style.cssText = 'position:absolute;top:10px;right:10px;max-height:calc(100% - 20px);overflow:auto;z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);box-shadow:0 18px 48px rgba(0,0,0,.45);padding:14px 14px 16px;font-family:var(--fb)';
-  panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 15px var(--fh);color:var(--t1);flex:1">Designs</div><button type="button" id="t3-lay-x" aria-label="Close" class="lu-btn lu-btn--sm">Close</button></div>'
-    + '<div id="t3-lay-sub" style="font-size:12px;color:var(--t3);line-height:1.45">Choose a look and a page structure. Preview any design with your own content for free. Applying keeps your text, images, colours and added sections, and Undo puts the old design back.</div>'
-    + '<div id="t3-lay-filters"></div>'
+  panel.innerHTML = '<div class="dp-head"><div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 15px var(--fh);color:var(--t1);flex:1">Designs</div><button type="button" id="t3-lay-x" class="dp-x" aria-label="Close" title="Close">×</button></div>'
+    + '<div id="t3-lay-sub" style="font-size:12px;color:var(--t3);line-height:1.45"><span class="dp-intro-l">Choose a look and a page structure. Preview any design with your own content for free. Applying keeps your text, images, colours and added sections, and Undo puts the old design back.</span><span class="dp-intro-s">Pick a look and a structure. Previewing is free.</span></div>'
+    + '<div id="t3-lay-filters"></div></div>'
     + '<div id="t3-lay-list"><div class="lu-skel" style="width:80%;margin-top:12px"></div><div class="lu-skel" style="width:60%;margin-top:8px"></div></div>';
   stage.appendChild(panel);
+  // phones: the sheet sits over the editor and the Arthur dock steps aside while it is open (html.dp-open), like the other sheets
+  document.documentElement.classList.add('dp-open');
+  var _dpObs = new MutationObserver(function () { if (!document.body.contains(panel)) { document.documentElement.classList.remove('dp-open'); _dpObs.disconnect(); } });
+  _dpObs.observe(panel.parentNode, { childList: true });
   panel.querySelector('#t3-lay-x').addEventListener('click', function () { panel.remove(); if (window._t3LayoutPreviewing) _t3LayoutEndPreview(); });
   var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
   var list = panel.querySelector('#t3-lay-list');
@@ -4947,7 +4973,7 @@ window.wsOpenLayouts = async function (siteId) {
         var ab = document.querySelector('#t3-lay-bar [data-a=apply]'); if (ab) ab.textContent = 'Apply this design';
       } catch (e) {
         if (typeof showToast === 'function') showToast("Couldn’t preview that design — " + e.message, 'error');
-      } finally { busy = false; if (btn) { btn.disabled = false; btn.textContent = 'Preview with my content'; } }
+      } finally { busy = false; if (btn) { btn.disabled = false; btn.innerHTML = '<span class="lbl-l">Preview with my content</span><span class="lbl-s">Try it</span>'; } }
     })();
   }
 
@@ -4964,12 +4990,18 @@ window.wsOpenLayouts = async function (siteId) {
     if (!shown.some(function (L) { return !L.current; })) { grid.innerHTML += '<div class="dp-empty">No design matches these choices. Try another style or layout.</div>'; }
     shown.forEach(function (L) {
       var card = document.createElement('div');
-      card.className = 'dp-card' + (L.current ? ' cur' : ''); card.setAttribute('data-lay', L.slug);
-      card.innerHTML = (L.screenshot ? '<img src="' + L.screenshot + '" alt="" loading="lazy">' : '<div class="ph"></div>')
+      // the current design shows the site itself (its live thumbnail); a design with no shot gets a named placeholder, never an empty box
+      var dImg = (L.current && L.site_thumb) ? L.site_thumb : (L.screenshot || '');
+      var mImg = L.screenshot_m || '';
+      card.className = 'dp-card' + (L.current ? ' cur' : '') + (mImg ? ' hasm' : ''); card.setAttribute('data-lay', L.slug);
+      card.innerHTML = '<div class="shot"><div class="ph"><span>' + (L.current ? 'Your site' : (L.kind === 'v3' ? bld_escH(L.layout_label || '') : 'Classic')) + '</span><b>' + bld_escH(_dpName(L)) + '</b></div>'
+        + (dImg ? '<img class="d" src="' + dImg + '" alt="" loading="lazy">' : '')
+        + (mImg ? '<img class="m" src="' + mImg + '" alt="" loading="lazy">' : '') + '</div>'
         + '<div class="b"><div class="n">' + (L.kind === 'v3' ? '' : '<span class="dp-tag">Classic</span>') + bld_escH(_dpName(L)) + '</div>'
         + '<div class="m">' + (L.current ? '✓ Your current design' : (L.carry_over + '% of your content carries over · ' + (L.credits > 0 ? L.credits + ' credits to fill the rest' : 'free to apply'))) + '</div>'
-        + '<div class="a">' + (L.preview_url ? '<button type="button" class="lu-btn lu-btn--sm" data-a="look">Quick look</button>' : '')
-        + (L.current ? '' : '<button type="button" class="lu-btn lu-btn--sm" data-a="mine" style="background:var(--p);color:#fff;border-color:var(--p)">Preview with my content</button>') + '</div></div>';
+        + '<div class="a">' + (L.preview_url ? '<button type="button" class="lu-btn lu-btn--sm" data-a="look"><span class="lbl-l">Quick look</span><span class="lbl-s">Look</span></button>' : '')
+        + (L.current ? '' : '<button type="button" class="lu-btn lu-btn--sm" data-a="mine" style="background:var(--p);color:#fff;border-color:var(--p)"><span class="lbl-l">Preview with my content</span><span class="lbl-s">Try it</span></button>') + '</div></div>';
+      card.querySelectorAll('.shot img').forEach(function (im) { im.addEventListener('error', function () { im.remove(); if (im.classList.contains('m')) card.classList.remove('hasm'); }); });
       var look = card.querySelector('[data-a=look]');
       if (look) look.addEventListener('click', function () { _dpQuickLook(L, vocab, qlPal, L.current ? null : function () { previewMine(L, null); }); });
       var mine = card.querySelector('[data-a=mine]');
