@@ -2467,6 +2467,8 @@ PROMPT;
         $tv       = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
         $current  = $this->siteDesignSlug($site, $settings);
         $industry = $current !== '' ? $this->templates->industryOf($current) : '';
+        $tf = storage_path("app/public/site-thumbs/{$websiteId}.jpg");   // DESIGN-PICKER-80b: a real shot only (a near-empty file is a blank frame)
+        $siteThumb = (is_file($tf) && filesize($tf) > 8000) ? "/storage/site-thumbs/{$websiteId}.jpg?v=" . filemtime($tf) : null;
         $out = [];
         foreach (glob(storage_path('templates/*/manifest.json')) ?: [] as $mf) {
             $slug = basename(dirname($mf));
@@ -2495,6 +2497,9 @@ PROMPT;
                 'slug' => $slug, 'name' => (string) ($m['name'] ?? ucwords(str_replace('_', ' ', $slug))), 'industry' => $ind,
                 'current' => $slug === $current,
                 'screenshot' => is_file(public_path('marketing-next/dist-root' . $shot)) ? $shot : null,
+                // DESIGN-PICKER-80b: the phone-view shot (first screen at 390) for phone cards, and the site's own live thumbnail for the current design
+                'screenshot_m' => is_file(public_path("marketing-next/dist-root/assets/product/templates-m/{$slug}.webp")) ? "/assets/product/templates-m/{$slug}.webp" : null,
+                'site_thumb' => $slug === $current ? $siteThumb : null,
                 'carry_over' => $total > 0 ? (int) round(100 * $have / $total) : 100,
                 'gaps' => $slug === $current ? 0 : $gaps,
                 'credits' => ($slug === $current || $gaps === 0) ? 0 : self::LAYOUT_FILL_CREDITS,
@@ -6720,6 +6725,7 @@ PROMPT;
                 }
                 $identity['website_id'] = $websiteId;   // DRAFT-5: the page builder reads the site's own catalogue
                 $sections = $this->buildDefaultSectionsForPage($slug, $identity);
+                $sections = \App\Engines\Builder\Support\PageFill::fill($sections, \App\Engines\Builder\Support\PageFill::siteVars($tv, (string) ($settings['template'] ?? $site->template_industry ?? '')), $identity, $slug, $websiteId);   // PAGE-PREVIEW-2
                 // persist the page row (published: the static export is what is served, the row keeps the editor + listing honest)
                 $created = app(\App\Engines\Builder\Services\BuilderService::class)->createPage($websiteId, ['title' => $title, 'slug' => $urlSlug, 'sections' => $sections, 'status' => 'published']);
                 $pageId = (int) ($created['page_id'] ?? 0);
@@ -6794,6 +6800,51 @@ PROMPT;
     }
 
     /** The business facts every added page/section is written from: THIS site's variables first. */
+    /**
+     * PAGE-PREVIEW-2 (Owner 2026-10-07: the add-page preview showed a generic purple sample with an empty Legal body and an
+     * empty footer). The page exactly as "Add this page" will write it - same stack, same fill, the site's own head, nav
+     * (with the new link), footer, palette roles and fonts - composed in memory. Returns ['html' => ..., 'title' => ...]
+     * or ['error' => code, 'message' => ...]. Nothing is written and nothing is charged.
+     */
+    public function previewPageForSite(int $wsId, int $websiteId, string $slug): array
+    {
+        $site = DB::table('websites')->where('id', $websiteId)->whereNull('deleted_at')->first();
+        if (! $site || (int) $site->workspace_id !== $wsId) return ['error' => 'not_found', 'message' => 'Website not found.'];
+        $slug = preg_replace('/[^a-z0-9_]/', '', strtolower(str_replace('-', '_', $slug)));
+        $meta = self::PAGE_TEMPLATE_CATALOGUE[$slug] ?? null;
+        if ($meta === null) return ['error' => 'unknown_page', 'message' => 'That page type is not available.'];
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $tv = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $industry = (string) ($this->templates->industryOf((string) ($settings['template'] ?? $settings['industry'] ?? $site->template_industry ?? '')) ?: '');
+        $title = (string) ($meta['label'] ?? ucfirst($slug));
+        $urlSlug = str_replace('_', '-', $slug);
+        if (\App\Engines\Builder\Support\DraftEdits::on() && ($needs = \App\Engines\Builder\Support\DraftEdits::pageNeedsItems($websiteId, $slug)) !== null) {
+            return ['error' => 'needs_items', 'title' => $title, 'message' => $needs === 'menu' ? 'This page is built from your dishes - add them under Listings first, then it shows them here.' : 'This page is built from your listings - add them under Listings first, then it shows them here.'];
+        }
+        $identity = $this->siteIdentity($site, $tv, $industry);
+        $identity['website_id'] = $websiteId;
+        $sections = $this->buildDefaultSectionsForPage($slug, $identity);
+        $sections = \App\Engines\Builder\Support\PageFill::fill($sections, \App\Engines\Builder\Support\PageFill::siteVars($tv, (string) ($settings['template'] ?? $site->template_industry ?? '')), $identity, $slug, $websiteId);
+        $brand = $this->paletteBrand($tv, $settings);
+        $renderer = app(BuilderRenderer::class);
+        $navLabel = trim(explode('/', $title)[0]);
+        if (is_file(storage_path("app/public/sites/{$websiteId}/index.html"))) {
+            $body = $this->renderSectionsInTemplateChrome($renderer, $sections, $brand, (array) $site);
+            $doc = $this->templates->composePage($websiteId, $urlSlug, $body, $title);
+            if ($doc === null) return ['error' => 'no_chrome', 'message' => 'This website has no published home page to build on yet.'];
+            $doc = $this->templates->linkPageInHtml($doc, $urlSlug, $navLabel, '../');
+        } else {
+            // a site served by the renderer: its own palette and fonts, its own nav and footer
+            $pages = DB::table('pages')->where('website_id', $websiteId)->orderBy('sort_order')->orderBy('id')->get(['slug', 'title'])->map(fn ($p) => ['slug' => $p->slug, 'title' => $p->title])->all();
+            $pages[] = ['slug' => $urlSlug, 'title' => $navLabel];
+            $html = '';
+            foreach ($sections as $sec) $html .= $renderer->renderSection($sec, $brand + ['font_heading' => (string) ($tv['font_heading'] ?? 'Inter'), 'font_body' => (string) ($tv['font_body'] ?? 'Inter')], (array) $site, $pages, $urlSlug);
+            $doc = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . e($title) . '</title></head><body style="margin:0">' . $html . '</body></html>';
+        }
+        // a preview never posts or tracks: forms are inert and say so on submit
+        $doc = str_ireplace('</body>', '<script>document.addEventListener("submit",function(e){e.preventDefault();},true);</script></body>', $doc);
+        return ['html' => $doc, 'title' => $title, 'legal' => \App\Engines\Builder\Support\PageFill::isLegal($slug), 'site_name' => (string) $site->name];
+    }
     private function siteIdentity(object $site, array $tv, string $industry): array
     {
         // Whatever this template calls the things it sells (SERVICE-TITLES 2026-09-11).
@@ -8339,8 +8390,7 @@ PROMPT;
                 return [
                     ['type' => 'header'],
                     ['type' => 'hero', 'heading' => $legalTitle, 'subheading' => 'Last updated: ' . date('F j, Y')],
-                    ['type' => 'generic',
-                        'content' => "Placeholder for {$legalTitle}. Add the full legal text here. This template is industry-agnostic — substitute the appropriate content for your jurisdiction. Sarah can be asked to draft a starting version and Arthur will edit it once placed."],
+                    \App\Engines\Builder\Support\PageFill::legalSection($slugN, $data),   // PAGE-PREVIEW-2: privacy, terms, cookies, data requests for this business
                     ['type' => 'footer'],
                 ];
 
