@@ -5961,7 +5961,10 @@ window._t3CloseFloating = function (except) {
     downInPanel = fromFrame ? false : (inPanel(e.target) || isOpener(e.target));
     // A click in the website is how the toolbox is used, so the toolbox is cleared on the way IN and the
     // overlay re-draws it if the click landed on something selectable.
-    if (fromFrame) { window._t3HideToolbox(); }
+    // TOOLBOX-TAP-1 (2026-10-07, Owner: "unable to edit the size of text" in manual editing): a press ON the toolbox hid the
+    // toolbox before the click landed, so the click fell through to the page under it - A-/A+, align, move, link and effects
+    // did nothing or deselected. Presses inside the toolbox are its own; everything else in the website still clears it.
+    if (fromFrame) { var _inTb = false; try { _inTb = !!(e.target && e.target.closest && e.target.closest('#__lu_el_tb')); } catch (_tb) {} if (!_inTb) window._t3HideToolbox(); }
   }
 
   function end(e) {
