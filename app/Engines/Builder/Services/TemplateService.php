@@ -1181,7 +1181,7 @@ class TemplateService
     {
         $dom = new \DOMDocument();
         libxml_use_internal_errors(true);
-        $dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        $dom->loadHTML('<?xml encoding="UTF-8">' . self::shieldScripts($html, $__js), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         libxml_clear_errors();
         $xp = new \DOMXPath($dom);
         $node = $xp->query('//*[@data-field="' . $field . '"]')->item(0);
@@ -1216,7 +1216,7 @@ class TemplateService
                 $node->appendChild($a);
             }
         }
-        $out = (string) $dom->saveHTML();
+        $out = self::unshieldScripts((string) $dom->saveHTML(), $__js);
         $out = (string) preg_replace('/^<\?xml encoding="UTF-8"\?>\s*/', '', $out);
         $msg = $href === '' ? 'removed the link from ' . $label : 'linked ' . $label . ' to ' . $href . ($newTab ? ' (opens in a new tab)' : '');
         return ['success' => true, 'html' => $out, 'message' => $msg];
@@ -1243,7 +1243,7 @@ class TemplateService
         $pretty = fn(string $k) => str_replace(['_', '-'], ' ', $k);
         $dom = new \DOMDocument();
         libxml_use_internal_errors(true);
-        $dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        $dom->loadHTML('<?xml encoding="UTF-8">' . self::shieldScripts($html, $__js), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         libxml_clear_errors();
         $xp = new \DOMXPath($dom);
         $find = fn(string $k) => $xp->query('//*[@data-field="' . $k . '"]')->item(0);
@@ -1299,7 +1299,7 @@ class TemplateService
             default:
                 return ['success' => false, 'message' => 'Tell me where it should go.'];
         }
-        $out = $dom->saveHTML();
+        $out = self::unshieldScripts((string) $dom->saveHTML(), $__js);
         $out = preg_replace('/^<\?xml encoding="UTF-8"\?>\s*/', '', $out) ?? $out;
         $out = $this->restoreUtf8Entities($out);
         return ['success' => true, 'html' => $out, 'message' => $message];
@@ -1328,7 +1328,7 @@ class TemplateService
         if (! preg_match('/^[a-z0-9_\-]+$/', $block) || ($ref !== null && $ref !== '' && ! preg_match('/^[a-z0-9_\-]+$/', $ref))) return ['success' => false, 'message' => 'I could not tell which section you mean.'];
         $dom = new \DOMDocument();
         libxml_use_internal_errors(true);
-        $dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        $dom->loadHTML('<?xml encoding="UTF-8">' . self::shieldScripts($html, $__js), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         libxml_clear_errors();
         $xp = new \DOMXPath($dom);
         $find = fn(string $b) => $xp->query('//*[@data-block="' . $b . '"]')->item(0);
@@ -1356,7 +1356,7 @@ class TemplateService
         } else {
             return ['success' => false, 'message' => 'Tell me where it should go — before or after another section, or to the top or the bottom.'];
         }
-        $out = $dom->saveHTML();
+        $out = self::unshieldScripts((string) $dom->saveHTML(), $__js);
         $out = preg_replace('/^<\?xml encoding="UTF-8"\?>\s*/', '', $out) ?? $out;
         $out = $this->restoreUtf8Entities($out);
         return ['success' => true, 'html' => $out, 'message' => 'moved the ' . str_replace('_', ' ', $block) . ' section ' . $where];
@@ -1698,7 +1698,7 @@ class TemplateService
     {
         $families = [
             ['service', 'title'], ['treatment', 'title'], ['menu', 'title'], ['special', 'title'], ['program', 'title'],
-            ['programme', 'title'], ['course', 'title'], ['room', 'name'], ['amenity', 'title'], ['featured', 'title'],
+            ['programme', 'title'], ['course', 'title'], ['room', 'name'], ['room', 'title'], ['amenity', 'title'],   // CAT-SELECT-1: room cards (room_N_title) too ['featured', 'title'],
             ['feature', 'title'], ['usecase', 'title'], ['specialty', 'name'], ['package', 'title'], ['plan', 'name'],
             ['session', 'name'], ['dining', 'name'], ['exp', 'title'], ['offer', 'title'], ['product', 'title'],
         ];
@@ -1922,6 +1922,26 @@ class TemplateService
      * markup. Also self-heals an already-corrupted file on the next save (the
      * literal &#9679; text decodes back to ●).
      */
+    /**
+     * SCRIPT-SHIELD-1 (EDITOR-CERT-3, 2026-10-07): libxml's HTML parser drops "</tag>" sequences inside inline <script> bodies on a
+     * DOM round trip ('<small>'+d+'</small>' came back as '<small>'+d). Every loadHTML/saveHTML pair here sets the bodies that hold
+     * "</" aside first and puts them back after; scripts without "</" are left as they are.
+     */
+    private static function shieldScripts(string $html, ?array &$map): string
+    {
+        $map = [];
+        return (string) preg_replace_callback('#(<script\b[^>]*>)(.*?)(</script>)#is', function ($m) use (&$map) {
+            if (! preg_match('#</[a-z!/]#i', $m[2])) return $m[0];
+            $k = '/*lu-js-shield-' . count($map) . '-' . bin2hex(random_bytes(4)) . '*/';
+            $map[$k] = $m[2];
+            return $m[1] . $k . $m[3];
+        }, $html);
+    }
+
+    private static function unshieldScripts(string $html, ?array $map): string
+    {
+        return $map ? strtr($html, $map) : $html;
+    }
     private function restoreUtf8Entities(string $html): string
     {
         $keep = ['&amp;' => "A", '&lt;' => "L", '&gt;' => "G", '&quot;' => "Q", '&#39;' => "P", '&apos;' => "P"];
@@ -1985,7 +2005,7 @@ class TemplateService
         $dom = new \DOMDocument();
         libxml_use_internal_errors(true);
         @$dom->loadHTML(
-            $original,
+            self::shieldScripts((string) $original, $__jsf),   // SCRIPT-SHIELD-1
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
         );
         libxml_clear_errors();
@@ -2120,7 +2140,7 @@ class TemplateService
                 \Illuminate\Support\Facades\Log::warning('[TemplateService] RISK-0107 pre-edit backup failed: ' . $e->getMessage());
             }
 
-            $new = $this->restoreUtf8Entities($dom->saveHTML());
+            $new = self::unshieldScripts($this->restoreUtf8Entities($dom->saveHTML()), $__jsf);   // SCRIPT-SHIELD-1
             $new = $this->roleifyLegacyAddedBlocks($websiteId, $new);   // RISK-0191 U1: "when next edited"
             $this->syncAddedFieldToStored($websiteId, $fieldId, $new);   // U3: the stored fragment keeps the edit
             rewind($fp);

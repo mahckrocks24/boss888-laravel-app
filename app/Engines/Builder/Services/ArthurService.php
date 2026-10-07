@@ -7637,9 +7637,21 @@ PROMPT;
                    text onto light sections. */
                 $solid = preg_replace('/color-mix\((?:[^()]|\([^()]*\))*\)/i', '', $decls);
                 if (! preg_match('/background(?:-color|-image)?\s*:[^;}]*var\(\s*' . $q . '\s*[,)]/i', (string) $solid)) { continue; }
+                // CONTRAST-GUARD-2 (EDITOR-CERT-3): the cascade decides - a later rule for the same selector that paints another background
+                // (or sets its own text colour) is what the visitor sees; judge that, not the first rule
+                if (preg_match_all('/(?:^|[}\s])' . preg_quote($selector, '/') . '\s*\{([^{}]*)\}/i', $html, $__all)) {
+                    $__bg = null; $__fgLast = null;
+                    foreach ($__all[1] as $__d) {
+                        $__d2 = preg_replace('/color-mix\((?:[^()]|\([^()]*\))*\)/i', 'X', $__d);
+                        if (preg_match('/background(?:-color)?\s*:\s*([^;}]+)/i', (string) $__d2, $__bm)) $__bg = trim($__bm[1]);
+                        if (preg_match('/(?<![-a-z])color\s*:\s*([^;}]+)/i', $__d, $__cm)) $__fgLast = trim($__cm[1]);
+                    }
+                    if ($__bg !== null && ! preg_match('/var\(\s*' . $q . '\s*[,)]/i', $__bg)) { continue; }
+                    if ($__fgLast !== null && ! preg_match('/!important/i', $__fgLast)) { $decls .= ';color:' . $__fgLast; }
+                }
                 // What colour does this rule put ON that background?
                 $fg = null;
-                if (preg_match('/(?<![-a-z])color\s*:\s*([^;}]+)/i', $decls, $cm)) {
+                if (preg_match_all('/(?<![-a-z])color\s*:\s*([^;}]+)/i', $decls, $__cms) && ($cm = [1 => end($__cms[1])])) {   // CONTRAST-GUARD-2: the last one wins
                     $fg = trim($cm[1]);
                     if (preg_match('/var\(\s*(--[a-z0-9-]+)/i', $fg, $vm)) {
                         $fg = $vars[strtolower($vm[1])] ?? null;
@@ -7904,7 +7916,8 @@ PROMPT;
         switch ($type) {
             case 'travel_quiz':
                 $cur = trim((string) ($tv['currency'] ?? ''));
-                if ($cur === '') { $cur = preg_match('/philippin|manila|cebu|laguna|davao/i', $loc . ' ' . (string) ($tv['contact_address'] ?? '')) ? '₱' : 'AED'; }
+                // EDITOR-CERT-3: the currency follows where the business is (was AED for every site outside the Philippines)
+                if ($cur === '') { $__where = trim($loc . ' ' . (string) ($tv['contact_address'] ?? '')); $cur = preg_match('/philippin|manila|cebu|laguna|davao/i', $__where) ? '₱' : ($__where !== '' ? \App\Engines\Builder\Support\ContactFacts::currencyFor($__where) : 'AED'); }
                 return ['type' => 'travel_quiz', 'business_name' => $name, 'currency' => $cur, 'heading' => "Plan your trip with {$name}",
                     'subheading' => 'Four quick questions and we send you a tailored quote — no payment online.', 'reference_prefix' => substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 3)];
             case 'booking_form':
@@ -7914,7 +7927,9 @@ PROMPT;
                 return ['type' => 'events_calendar', 'heading' => "What's on at {$name}", 'subheading' => 'Upcoming classes, sessions and events.', 'events' => [], 'view' => 'grid', 'cta_text' => 'Ask about dates', 'cta_url' => '#contact'];
             case 'pricing':
                 $tiers = [];
-                foreach (array_slice($svc, 0, 3) as $i => $s) $tiers[] = ['name' => $s, 'price' => 'From AED —', 'features' => ['Tailored to you', 'Book online', 'Friendly experts'], 'cta_text' => 'Enquire', 'cta_url' => '#contact'];
+                // EDITOR-CERT-3: each tier shows the site's own price for that service (was 'From AED —' on every site); no price = ask
+                $__own = []; foreach ($tv as $__k => $__v) { if (is_string($__v) && preg_match('/^([a-z]+)_(\d+)_title$/', (string) $__k, $__m)) { $__p = trim((string) ($tv[$__m[1] . '_' . $__m[2] . '_price'] ?? '')); if ($__p !== '') $__own[mb_strtolower(trim($__v))] = $__p; } }
+                foreach (array_slice($svc, 0, 3) as $i => $s) { $__p = $__own[mb_strtolower(trim((string) $s))] ?? ''; if ($__p !== '' && preg_match('/\d/', $__p) && ! preg_match('/^(from|per|starting)\b/i', $__p)) $__p = 'From ' . $__p; $tiers[] = ['name' => $s, 'price' => $__p !== '' ? $__p : 'Ask for a quote', 'features' => ['Tailored to you', 'Book online', 'Friendly experts'], 'cta_text' => 'Enquire', 'cta_url' => '#contact']; }
                 return ['type' => 'pricing', 'heading' => 'Simple pricing', 'body' => 'Transparent prices, no surprises. Ask us for a quote on anything not listed.', 'tiers' => $tiers];
             case 'faq':
                 $items = [['q' => "How do I book with {$name}?", 'a' => 'Use the booking form or call us — we confirm within the day.'], ['q' => 'Where are you located?', 'a' => $loc ? "We're in {$loc}. Directions are in the contact section." : 'See the contact section for our address and directions.'], ['q' => 'Do you offer packages?', 'a' => 'Yes — ask us and we will put together a package that fits.']];

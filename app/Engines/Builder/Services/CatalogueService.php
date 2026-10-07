@@ -682,6 +682,21 @@ class CatalogueService
             DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
             if (isset($specs['service'])) { try { $this->templates->refreshServiceSelects($websiteId, $tv); } catch (\Throwable $e) {} }   // booking-form dropdowns follow the services
         }
+        // CAT-SELECT-1 (EDITOR-CERT-3, 2026-10-07): the booking selects list what is open now - a vacated slot keeps its old title on the
+        // page (hidden by the catalogue CSS) but must not stay in the dropdown; with nothing open the design's own sample names stand in
+        try {
+            $sel = $tv; $touched = false; $mf = null;
+            foreach ($specs as $kind => $spec) {
+                if (! in_array($spec['family'], ['service', 'treatment', 'menu', 'room', 'package', 'program', 'course', 'product', 'offer'], true)) continue;
+                $openT = array_values(array_map(fn($r) => (string) $r->title, array_filter($this->rows($websiteId, $kind), fn($r) => in_array($r->status, $spec['open'], true))));
+                if ($openT === []) { $mf = $mf ?? (\App\Engines\Builder\Support\LogoFieldSemantics::manifestFor($websiteId) ?: []); }
+                for ($i = 1; $i <= max(8, (int) $spec['slots']); $i++) {
+                    $k = "{$spec['family']}_{$i}_title"; if (! array_key_exists($k, $sel)) continue;
+                    $sel[$k] = $openT !== [] ? ($openT[$i - 1] ?? '') : (string) ($mf['variables'][$k]['default'] ?? $sel[$k]); $touched = true;
+                }
+            }
+            if ($touched) $this->templates->refreshServiceSelects($websiteId, $sel);
+        } catch (\Throwable $e) { Log::warning('[Catalogue] select refresh failed', ['site' => $websiteId, 'error' => $e->getMessage()]); }
         $this->writeHideCss($websiteId);
         $result['fields'] = $patched;
         return $result;
