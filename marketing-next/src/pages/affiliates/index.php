@@ -8,6 +8,7 @@
  * claimed that the platform does not do. No supplier names except the two payout options the affiliate chooses between.
  */
 $page['title'] = 'Affiliate Program';
+$page['nav_actions'] = [['Affiliate login', '/affiliates/portal', 'btn-primary']];   // NAV-DOOR-1 (Owner 2026-10-07): on this page the header's door is the affiliate portal, not the platform's Log in / Dashboard
 $page['og_image'] = rtrim($data['site']['url'] ?? 'https://levelupgrowth.io', '/') . '/next/assets/og/affiliates-featured.jpg';   // OG-SHARE-1: JPEG under WhatsApp's limit
 $page['og_image_alt'] = 'LevelUpGrowth Affiliate Program: share your code, get paid 6 times for every business';   // AFF-PAGE-9 (Owner: "add a nice featured image")
 $page['description'] = 'Recommend LevelUpGrowth with your own voucher code and earn up to 20% of their first 6 monthly payments. You decide how much becomes your audience\'s discount.';

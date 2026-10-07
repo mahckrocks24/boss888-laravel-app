@@ -94,11 +94,16 @@ $jsonld = array_merge([[
       </div>
     </nav>
     <div class="nav-actions">
+<?php /* NAV-DOOR-1 (Owner 2026-10-07): a page can replace the platform's Log in / Dashboard pair with its own door(s), e.g. the affiliate page's "Affiliate login"; these carry neither .lu-login nor data-lu-signup, so site.js's session swap leaves them alone */ ?>
+<?php if (! empty($page['nav_actions'])): foreach ($page['nav_actions'] as [$naLabel, $naHref, $naClass]): ?>
+      <a class="btn <?= e($naClass) ?>" href="<?= e($naHref) ?>"><?= e($naLabel) ?></a>
+<?php endforeach; else: ?>
 <?php if ($chrome !== 'minimal'): ?>
       <a class="btn btn-ghost lu-login" href="/next/login/">Log in</a>
 <?php endif; ?>
 <?php if ($chrome === ''): ?>
       <a class="btn btn-primary" href="<?= e(signup_href($data)) ?>" data-lu-signup><span class="lbl-out"><?= e(cta_label($data)) ?></span><span class="lbl-in">Dashboard</span></a>
+<?php endif; ?>
 <?php endif; ?>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open menu"><?= icon('menu', 22) ?></button>
     </div>
@@ -111,7 +116,7 @@ $jsonld = array_merge([[
     <details class="m-group"><summary>Resources <span class="caret" aria-hidden="true"></span></summary>
       <?php foreach ($navModel['resources'] as [$ico, $name, $href]): ?><a class="m-item" href="<?= e($href) ?>"><?= icon($ico, 16) ?><?= e($name) ?></a><?php endforeach; ?>
     </details>
-    <div class="m-actions"><?php if ($chrome !== 'minimal'): ?><a class="btn btn-secondary lu-login" href="/next/login/">Log in</a><?php endif; ?><?php if ($chrome === ''): ?><a class="btn btn-primary" href="<?= e(signup_href($data)) ?>" data-lu-signup><span class="lbl-out"><?= e(cta_label($data)) ?></span><span class="lbl-in">Dashboard</span></a><?php endif; ?></div>
+    <div class="m-actions"><?php if (! empty($page['nav_actions'])): foreach ($page['nav_actions'] as [$naLabel, $naHref, $naClass]): ?><a class="btn <?= e($naClass) ?>" href="<?= e($naHref) ?>"><?= e($naLabel) ?></a><?php endforeach; else: ?><?php if ($chrome !== 'minimal'): ?><a class="btn btn-secondary lu-login" href="/next/login/">Log in</a><?php endif; ?><?php if ($chrome === ''): ?><a class="btn btn-primary" href="<?= e(signup_href($data)) ?>" data-lu-signup><span class="lbl-out"><?= e(cta_label($data)) ?></span><span class="lbl-in">Dashboard</span></a><?php endif; ?><?php endif; ?></div>
   </nav>
 </header>
 <div class="nav-backdrop" id="nav-backdrop" hidden></div>
